@@ -18,8 +18,9 @@ apiClient.interceptors.response.use(
 );
 
 export const api = {
-  // System Health
+  // System Health & Providers
   getHealth: () => apiClient.get('/health'),
+  checkFluxStatus: () => apiClient.get('/health/flux'),
 
   // Brand DNA
   getBrandDna: () => apiClient.get('/brand/nugi-properti'),
