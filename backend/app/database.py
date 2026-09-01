@@ -4,13 +4,13 @@ from sqlalchemy.orm import declarative_base, sessionmaker, Session
 from app.core.config import settings
 from app.core.logging import logger
 
-# Configure Engine based on dialect
+db_url = settings.effective_database_url
 connect_args = {}
-if settings.DATABASE_URL.startswith("sqlite"):
+if db_url.startswith("sqlite"):
     connect_args = {"check_same_thread": False}
 
 engine = create_engine(
-    settings.DATABASE_URL,
+    db_url,
     connect_args=connect_args,
     echo=False,
     future=True

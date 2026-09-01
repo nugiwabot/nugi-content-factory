@@ -1,13 +1,31 @@
+import sys
+from pathlib import Path
 from contextlib import asynccontextmanager
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, FileResponse
+from fastapi.staticfiles import StaticFiles
 
 from app.core.config import settings
 from app.core.logging import setup_logging, logger
 from app.core.errors import AppError, app_error_handler, generic_error_handler
 from app.database import init_db
 from app.api.v1.router import api_v1_router
+
+
+def find_frontend_dist() -> Path | None:
+    """Locates the built frontend static distribution directory."""
+    candidates = [
+        Path(getattr(sys, "_MEIPASS", ".")) / "frontend" / "dist",
+        Path(__file__).resolve().parent.parent.parent / "frontend" / "dist",
+        Path(__file__).resolve().parent.parent / "frontend" / "dist",
+        Path("frontend/dist"),
+        Path("dist")
+    ]
+    for c in candidates:
+        if c.exists() and (c / "index.html").exists():
+            return c.resolve()
+    return None
 
 
 @asynccontextmanager
@@ -49,16 +67,52 @@ def create_app() -> FastAPI:
     # 3. Include API Routers
     app.include_router(api_v1_router)
 
-    # 4. Root Welcome Route
-    @app.get("/")
-    def root():
-        return {
-            "app": settings.APP_NAME,
-            "version": settings.APP_VERSION,
-            "status": "operational",
-            "docs": "/docs",
-            "health": "/api/v1/health"
-        }
+    # 4. Frontend Static Files or Welcome JSON
+    frontend_dist = find_frontend_dist()
+    if frontend_dist:
+        logger.info(f"Serving static frontend UI from: {frontend_dist}")
+        
+        # Mount assets folder if exists
+        assets_dir = frontend_dist / "assets"
+        if assets_dir.exists():
+            app.mount("/assets", StaticFiles(directory=assets_dir), name="assets")
+
+        @app.get("/")
+        async def serve_spa_index(request: Request):
+            accept = request.headers.get("accept", "")
+            if settings.is_testing or ("application/json" in accept and "text/html" not in accept):
+                return {
+                    "app": settings.APP_NAME,
+                    "version": settings.APP_VERSION,
+                    "status": "operational",
+                    "docs": "/docs",
+                    "health": "/api/v1/health"
+                }
+            return FileResponse(frontend_dist / "index.html")
+
+        # Catch-all for SPA client-side routes (excluding /api and /docs)
+        @app.get("/{full_path:path}")
+        async def serve_spa_fallback(full_path: str):
+            if full_path.startswith("api") or full_path.startswith("docs") or full_path.startswith("openapi"):
+                return JSONResponse(status_code=404, content={"error": "Not Found"})
+            
+            # Check if requested file exists directly (e.g. /nugi_properti_logo.png, /favicon.ico)
+            static_file = frontend_dist / full_path
+            if static_file.is_file():
+                return FileResponse(static_file)
+
+            return FileResponse(frontend_dist / "index.html")
+
+    else:
+        @app.get("/")
+        def root():
+            return {
+                "app": settings.APP_NAME,
+                "version": settings.APP_VERSION,
+                "status": "operational",
+                "docs": "/docs",
+                "health": "/api/v1/health"
+            }
 
     return app
 

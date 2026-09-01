@@ -58,7 +58,8 @@ NUGI_PROPERTI_BRAND_PROFILE = BrandProfileSpec(
         accent_secondary="#6366f1",
         accent_gold="#f59e0b",
         accent_emerald="#10b981",
-        accent_rose="#f43f5e"
+        accent_rose="#f43f5e",
+        accent_neon_violet="#8b5cf6"
     ),
     typography=TypographySystem(),
     spacing=SpacingSystem(),

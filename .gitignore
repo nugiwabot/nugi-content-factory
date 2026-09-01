@@ -49,3 +49,6 @@ frontend/.vite/
 *.db
 storage/assets/*
 !storage/assets/.gitkeep
+release/
+scratch/
+

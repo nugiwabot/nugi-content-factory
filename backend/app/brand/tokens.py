@@ -23,6 +23,7 @@ class ColorSystem(BaseModel):
     # Accents (Business, Tech, Property authority)
     accent_primary: str = Field(default="#38bdf8", description="Electric Sky Cyan — Tech & Innovation")
     accent_secondary: str = Field(default="#6366f1", description="Deep Indigo — Business Authority")
+    accent_neon_violet: str = Field(default="#8b5cf6", description="Electric Purple/Violet — Signature Editorial Accent")
     accent_gold: str = Field(default="#f59e0b", description="Warm Amber/Gold — High-yield Investment & Wealth")
     accent_emerald: str = Field(default="#10b981", description="Emerald Green — Growth & Success Metrics")
     accent_rose: str = Field(default="#f43f5e", description="Rose Red — High-urgency Warnings & Critical Errors")

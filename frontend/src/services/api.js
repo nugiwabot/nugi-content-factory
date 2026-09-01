@@ -21,6 +21,9 @@ export const api = {
   // System Health & Providers
   getHealth: () => apiClient.get('/health'),
   checkFluxStatus: () => apiClient.get('/health/flux'),
+  getProviderSettings: () => apiClient.get('/settings/providers'),
+  updateProviderSettings: (data) => apiClient.post('/settings/providers', data),
+  testProviderConnection: (data) => apiClient.post('/settings/providers/test', data),
 
   // Brand DNA
   getBrandDna: () => apiClient.get('/brand/nugi-properti'),

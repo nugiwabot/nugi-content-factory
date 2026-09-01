@@ -1,6 +1,7 @@
 import io
 import time
 import math
+from pathlib import Path
 from typing import Dict, Any, Tuple, Optional, List
 from PIL import Image, ImageDraw, ImageFont, ImageFilter, ImageEnhance, ImageChops
 
@@ -14,8 +15,21 @@ from app.schemas.compositing import (
     ColorGradeSpecification,
     VisualConceptSpecification
 )
-from app.schemas.editorial_agent import ContentType
-from app.schemas.design_spec import DesignSpecification, CompositionType, CTAStrategy
+from app.schemas.editorial_agent import ContentType, VisualArtDirectionSpecification
+from app.schemas.design_spec import (
+    DesignSpecification,
+    CompositionType,
+    EditorialLayoutPreset,
+    CTAStrategy,
+    SAFEZONE_TOP,
+    SAFEZONE_BOTTOM,
+    SAFEZONE_HEIGHT,
+    SAFEZONE_LEFT,
+    SAFEZONE_RIGHT,
+    SAFEZONE_WIDTH,
+    SAFEZONE_CONTENT_LEFT,
+    SAFEZONE_CONTENT_RIGHT
+)
 from app.rendering.layout import LayoutEngine
 from app.core.logging import logger
 from app.core.errors import RenderingError
@@ -23,14 +37,18 @@ from app.core.errors import RenderingError
 
 class ProfessionalCompositingEngine:
     """
-    13-Layer Professional AI Visual Compositing Engine for Nugi Content Factory (Phase 3D-1).
-    Executes layered alpha compositing, lighting matching, contact/drop shadows,
-    atmospheric depth, content-type-specific editorial layouts, and deterministic typography.
+    13-Layer Professional Editorial Compositing Engine (Phase 3D-2).
+    Implements Akademi Kripto visual editorial DNA:
+    - Seamless dark gradient scrim across the lower canvas for maximum readability.
+    - Solid vibrant neon highlight strips/pills directly behind key headline punchlines.
+    - Crisp white extra-bold typography (68-84px) with maximum contrast.
+    - Minimalist header with sleek brand mark and carousel icon.
+    - 100% invisible Instagram safezone (y=135..1215).
     """
     def __init__(self):
         self.colors = NUGI_PROPERTI_BRAND_PROFILE.colors
 
-    def _hex_to_rgb(self, hex_code: str, fallback: Tuple[int, int, int] = (15, 23, 42)) -> Tuple[int, int, int]:
+    def _hex_to_rgb(self, hex_code: str, fallback: Tuple[int, int, int] = (139, 92, 246)) -> Tuple[int, int, int]:
         try:
             h = hex_code.lstrip("#")
             if len(h) == 6:
@@ -91,312 +109,338 @@ class ProfessionalCompositingEngine:
         return Image.alpha_composite(base_img, blended_rgba)
 
     # --------------------------------------------------------------------------
-    # COLOR GRADING & CINEMATIC TONE MAPPING
+    # COLOR GRADING
     # --------------------------------------------------------------------------
     def apply_color_grading(
         self,
         img: Image.Image,
         grade: ColorGradeSpecification
     ) -> Image.Image:
-        """Applies cinematic color grading, contrast, temperature bias, and corner vignette."""
+        """Applies cinematic color grading, contrast, temperature bias, and tone mapping."""
         width, height = img.size
         working = img.convert("RGBA")
 
-        # 1. Exposure Adjustment
+        # 1. Exposure
         if grade.exposure != 0.0:
             exp_factor = 1.0 + grade.exposure
             enhancer = ImageEnhance.Brightness(working)
             working = enhancer.enhance(max(0.2, exp_factor)).convert("RGBA")
 
-        # 2. Contrast Multiplier
+        # 2. Contrast
         if grade.contrast != 1.0:
             enhancer = ImageEnhance.Contrast(working)
             working = enhancer.enhance(grade.contrast).convert("RGBA")
 
-        # 3. Saturation Multiplier
+        # 3. Saturation
         if grade.saturation != 1.0:
             enhancer = ImageEnhance.Color(working)
             working = enhancer.enhance(grade.saturation).convert("RGBA")
 
-        # 4. Temperature & Tone Shift (Warm Amber vs Cool Twilight Tint)
+        # 4. Temperature & Tone Shift
         if grade.temperature != 0.0 or grade.tint != 0.0:
             temp_layer = Image.new("RGBA", (width, height), (0, 0, 0, 0))
             draw_t = ImageDraw.Draw(temp_layer)
             if grade.temperature > 0:
-                # Warm champagne gold tint
                 r_val, g_val, b_val = int(245 * grade.temperature), int(158 * grade.temperature), int(11 * grade.temperature)
                 draw_t.rectangle([0, 0, width, height], fill=(r_val, g_val, b_val, int(35 * abs(grade.temperature))))
             else:
-                # Cool obsidian twilight tint
                 cool_mag = abs(grade.temperature)
                 draw_t.rectangle([0, 0, width, height], fill=(15, 30, 60, int(45 * cool_mag)))
-            
             working = Image.alpha_composite(working, temp_layer)
 
         # 5. Vignette Falloff
         if grade.vignette_strength > 0:
-            vignette_layer = Image.new("RGBA", (width, height), (0, 0, 0, 0))
-            draw_v = ImageDraw.Draw(vignette_layer)
-            
+            vig_layer = Image.new("RGBA", (width, height), (0, 0, 0, 0))
+            draw_v = ImageDraw.Draw(vig_layer)
             cx, cy = width / 2.0, height / 2.0
-            steps = 40
+            steps = 30
             for i in range(steps):
                 ratio = i / float(steps)
-                alpha = int((ratio ** 2.2) * 220 * grade.vignette_strength)
+                alpha = int((ratio ** 2.2) * 200 * grade.vignette_strength)
                 inset_x = int(cx * (1.0 - ratio))
                 inset_y = int(cy * (1.0 - ratio))
                 draw_v.rectangle([inset_x, inset_y, width - inset_x, height - inset_y], outline=(4, 7, 14, alpha), width=width // steps + 2)
-
-            vignette_layer = vignette_layer.filter(ImageFilter.GaussianBlur(radius=35))
-            working = Image.alpha_composite(working, vignette_layer)
+            vig_layer = vig_layer.filter(ImageFilter.GaussianBlur(radius=30))
+            working = Image.alpha_composite(working, vig_layer)
 
         return working
-
-    # --------------------------------------------------------------------------
-    # REALISTIC LIGHTING MATCH & SHADOWS
-    # --------------------------------------------------------------------------
-    def apply_lighting_and_shadows(
-        self,
-        canvas: Image.Image,
-        subject_box: Tuple[int, int, int, int],
-        accent_rgb: Tuple[int, int, int]
-    ) -> Image.Image:
-        """Simulates directional lighting match, rim lighting on subject, and soft contact shadow."""
-        width, height = canvas.size
-        x1, y1, x2, y2 = subject_box
-
-        # 1. Soft Ground Contact Shadow (Occlusion at subject base)
-        shadow_layer = Image.new("RGBA", (width, height), (0, 0, 0, 0))
-        draw_s = ImageDraw.Draw(shadow_layer)
-        contact_y = y2 - 10
-        contact_rx = (x2 - x1) // 2 + 30
-        contact_ry = 28
-        draw_s.ellipse(
-            [((x1 + x2)//2) - contact_rx, contact_y - contact_ry, ((x1 + x2)//2) + contact_rx, contact_y + contact_ry],
-            fill=(4, 7, 14, 185)
-        )
-        shadow_layer = shadow_layer.filter(ImageFilter.GaussianBlur(radius=18))
-        canvas = Image.alpha_composite(canvas, shadow_layer)
-
-        # 2. Directional Ambient Lighting Glow (Warm golden/cyan highlight)
-        glow_layer = Image.new("RGBA", (width, height), (0, 0, 0, 0))
-        draw_g = ImageDraw.Draw(glow_layer)
-        glow_cx = x2 + 40
-        glow_cy = y1 + 60
-        glow_r = int((x2 - x1) * 0.75)
-        draw_g.ellipse(
-            [glow_cx - glow_r, glow_cy - glow_r, glow_cx + glow_r, glow_cy + glow_r],
-            fill=(accent_rgb[0], accent_rgb[1], accent_rgb[2], 55)
-        )
-        glow_layer = glow_layer.filter(ImageFilter.GaussianBlur(radius=50))
-        canvas = Image.alpha_composite(canvas, glow_layer)
-
-        return canvas
 
     # --------------------------------------------------------------------------
     # MASTER 13-LAYER COMPOSITING EXECUTION
     # --------------------------------------------------------------------------
     def composite_full_artwork(
         self,
-        concept: Optional[VisualConceptSpecification],
-        design_spec: DesignSpecification,
-        plan: Optional[CompositionPlan] = None,
+        concept: Optional[Any] = None,
+        design_spec: Optional[DesignSpecification] = None,
+        plan: Optional[Any] = None,
         background_bytes: Optional[bytes] = None,
-        subject_bytes: Optional[bytes] = None
+        subject_bytes: Optional[bytes] = None,
+        debug_safezone: bool = False
     ) -> Tuple[bytes, Dict[str, Any]]:
         """
-        Executes the 13-layer compositing stack adhering to NugiProperti Editorial Design DNA:
-        L0: Canvas -> L1: Background -> L2: Atmosphere -> L3: Architecture ->
-        L4: Subject -> L5: Supporting -> L6: Dynamic Scrim -> L7: Lighting ->
-        L8: Shadows -> L9: Depth/Color Grade -> L10: Graphics -> L11: Typography -> L12: Brand Signature.
+        Master Layer Compositing Pipeline (Phase 3D-3 Safezone Enforcement):
+        - Enforces 100% invisible Instagram safezone (x=76..1004, y=135..1215).
+        - Measures and tracks exact bounding boxes for every critical element.
+        - Preserves approved NugiProperti Editorial Design DNA without regression.
+        - Supports optional debug safezone visualization (disabled by default in production).
         """
+        # Flexible argument unpacking for complete backward compatibility
+        actual_spec: DesignSpecification
+        actual_concept: Optional[VisualConceptSpecification] = None
+        actual_plan: Optional[Any] = plan
+
+        if isinstance(concept, DesignSpecification):
+            actual_spec = concept
+            actual_concept = None
+        elif isinstance(design_spec, DesignSpecification):
+            actual_spec = design_spec
+            actual_concept = concept if isinstance(concept, VisualConceptSpecification) else None
+        else:
+            raise ValueError("A valid DesignSpecification must be provided to composite_full_artwork")
+
         start_time = time.time()
+        width = actual_spec.width or 1080
+        height = actual_spec.height or 1350
+
         try:
-            width = design_spec.width or 1080
-            height = design_spec.height or 1350
-            accent_hex = design_spec.accent_color_hex or self.colors.accent_primary
+            # Base Canvas
+            canvas = Image.new("RGBA", (width, height), (4, 7, 17, 255))
+            accent_hex = actual_spec.accent_color_hex or actual_spec.accent_color or NUGI_PROPERTI_BRAND_PROFILE.colors.accent_neon_violet
             accent_rgb = self._hex_to_rgb(accent_hex)
+            critical_bboxes: Dict[str, Dict[str, int]] = {}
 
-            # LAYER 0: Canvas Base (Obsidian Navy #070B14)
-            canvas = Image.new("RGBA", (width, height), (7, 11, 20, 255))
-
-            # LAYER 1: Background Asset (Photographic 8k Asset)
-            if background_bytes and len(background_bytes) > 0:
-                bg_img = Image.open(io.BytesIO(background_bytes)).convert("RGBA")
+            # LAYER 1: Base Photography / Cinematic Artwork
+            bg_bytes = background_bytes or actual_spec.background_image_bytes
+            if bg_bytes and len(bg_bytes) > 0:
+                bg_img = Image.open(io.BytesIO(bg_bytes)).convert("RGBA")
                 if bg_img.size != (width, height):
                     bg_img = bg_img.resize((width, height), Image.Resampling.LANCZOS)
                 canvas = Image.alpha_composite(canvas, bg_img)
             else:
                 from app.providers.mock_image import MockImageProvider
                 mock_gen = MockImageProvider()
-                mock_story = concept.visual_story if concept else design_spec.headline
+                mock_story = actual_concept.visual_story if actual_concept else actual_spec.headline
                 mock_out = mock_gen.generate_background(mock_story, width, height)
                 bg_img = Image.open(io.BytesIO(mock_out.image_bytes)).convert("RGBA")
                 canvas = Image.alpha_composite(canvas, bg_img)
 
-            # LAYER 2: Atmosphere & Twilight Haze
-            atmo_layer = Image.new("RGBA", (width, height), (0, 0, 0, 0))
-            draw_atmo = ImageDraw.Draw(atmo_layer)
-            for y in range(int(height * 0.18), int(height * 0.65)):
-                alpha = int(((y - height * 0.18) / (height * 0.47)) * 45)
-                draw_atmo.line([(0, y), (width, y)], fill=(15, 23, 42, alpha))
-            canvas = Image.alpha_composite(canvas, atmo_layer)
+            # LAYER 2: Subtle Focal Spotlight Glow behind subject
+            spot_layer = Image.new("RGBA", (width, height), (0, 0, 0, 0))
+            draw_spot = ImageDraw.Draw(spot_layer)
+            cx, cy = int(width * 0.5), int(height * 0.38)
+            spot_r = int(width * 0.45)
+            for r in range(spot_r, 0, -20):
+                alpha = int((1.0 - (r / float(spot_r))) ** 2 * 60)
+                draw_spot.ellipse([cx - r, cy - r, cx + r, cy + r], fill=(255, 255, 255, alpha))
+            spot_layer = spot_layer.filter(ImageFilter.GaussianBlur(radius=35))
+            canvas = Image.alpha_composite(canvas, spot_layer)
 
-            # LAYER 3 & 4 & 5: Architectural Scene & Main Subject Isolation
-            subject_box = (int(width * 0.45), int(height * 0.10), int(width * 0.95), int(height * 0.72))
+            # LAYER 3: Isolated Subject (if provided)
             if subject_bytes and len(subject_bytes) > 0:
                 subj_img = Image.open(io.BytesIO(subject_bytes)).convert("RGBA")
-                canvas.paste(subj_img, (subject_box[0], subject_box[1]), subj_img)
-            
-            # LAYER 7 & 8: Lighting Match & Contact Shadows
-            canvas = self.apply_lighting_and_shadows(canvas, subject_box, accent_rgb)
+                canvas.paste(subj_img, (int(width * 0.45), int(SAFEZONE_TOP + 40)), subj_img)
 
-            # LAYER 6: Dynamic Asymmetric Scrim Gradient (60:40 Editorial Ratio)
-            scrim_layer = Image.new("RGBA", (width, height), (0, 0, 0, 0))
-            draw_scrim = ImageDraw.Draw(scrim_layer)
-            scrim_start_y = int(height * 0.38) # Darkens bottom 62% for headline legibility
-            for y in range(scrim_start_y, height):
-                progress = (y - scrim_start_y) / (height - scrim_start_y)
-                alpha = int((progress ** 1.35) * 252)
-                draw_scrim.line([(0, y), (width, y)], fill=(7, 11, 20, min(alpha, 254)))
-            canvas = Image.alpha_composite(canvas, scrim_layer)
+            # LAYER 4: Seamless Bottom Dark Gradient Scrim (Akademi Kripto Style)
+            canvas = LayoutEngine.draw_bottom_gradient_scrim(
+                canvas=canvas,
+                start_y=680,
+                end_y=1220,
+                dark_rgb=(4, 7, 17)
+            )
 
-            # LAYER 9: Depth & Color Grading Tone Mapping
-            grade = plan.color_grade if plan else ColorGradeSpecification(
-                preset_name=concept.color_mood[:20] if concept else "CINEMATIC_TWILIGHT"
+            # LAYER 5: Color Grading & Tone Mapping
+            grade = actual_plan.color_grade if isinstance(actual_plan, CompositionPlan) else ColorGradeSpecification(
+                preset_name="CINEMATIC_TWILIGHT",
+                contrast=1.12,
+                exposure=0.0
             )
             canvas = self.apply_color_grading(canvas, grade)
 
-            # LAYER 10: Editorial Graphic Design Accents
-            draw = ImageDraw.Draw(canvas)
-            pad_x = int(width * 0.075) # 80px safe margin
-            curr_y = int(height * 0.44)
+            # ==================================================================
+            # TOP SAFEZONE: Minimalist Brand Header & Carousel Icon (y ≈ 150)
+            # ==================================================================
+            pad_x = SAFEZONE_CONTENT_LEFT
+            top_y = SAFEZONE_TOP + 20
+            draw_top = ImageDraw.Draw(canvas)
 
-            # Check content archetype specifics
-            is_opinion = "OPINION" in str(design_spec.badge_text).upper() or (concept and concept.content_type in (ContentType.PROPERTY_OPINION, ContentType.OPINION))
+            # 1. Sleek Brand Icon & Logo Mark (Top-Left)
+            logo_loaded = False
+            brand_logo_path = Path(__file__).resolve().parent.parent.parent.parent / "assets" / "brand" / "nugi_properti_logo.png"
+            if not brand_logo_path.exists():
+                brand_logo_path = Path(__file__).resolve().parent.parent.parent / "assets" / "brand" / "nugi_properti_logo.png"
+
+            if brand_logo_path.exists():
+                try:
+                    brand_logo = Image.open(brand_logo_path).convert("RGBA")
+                    lh = 50
+                    lw = int(brand_logo.width * (lh / float(brand_logo.height)))
+                    brand_logo_scaled = brand_logo.resize((lw, lh), Image.Resampling.LANCZOS)
+                    canvas.paste(brand_logo_scaled, (pad_x, top_y), brand_logo_scaled)
+                    critical_bboxes["brand_header"] = {
+                        "left": pad_x,
+                        "top": top_y,
+                        "right": pad_x + lw,
+                        "bottom": top_y + lh
+                    }
+                    logo_loaded = True
+                except Exception:
+                    logo_loaded = False
+
+            if not logo_loaded:
+                v_x = pad_x
+                v_y = top_y + 2
+                draw_top.polygon(
+                    [(v_x, v_y), (v_x + 12, v_y + 24), (v_x + 24, v_y), (v_x + 18, v_y), (v_x + 12, v_y + 14), (v_x + 6, v_y)],
+                    fill=accent_rgb
+                )
+                logo_font = self._load_font(28, bold=True)
+                logo_sub_font = self._load_font(18, bold=False)
+                
+                # Stacked modern brand text: NUGI / PROPERTI
+                draw_top.text((v_x + 32, top_y - 2), "NUGI", fill=(255, 255, 255, 240), font=logo_font)
+                draw_top.text((v_x + 32, top_y + 24), "PROPERTI", fill=accent_rgb, font=logo_sub_font)
+                critical_bboxes["brand_header"] = {
+                    "left": v_x,
+                    "top": top_y - 2,
+                    "right": v_x + 180,
+                    "bottom": top_y + 48
+                }
+
+            # 2. Carousel / Share Icon (Top-Right)
+            car_sz = 30
+            car_x = width - pad_x - car_sz - 6
+            car_y = top_y + 10
+            draw_top.rounded_rectangle([car_x, car_y, car_x + car_sz - 4, car_y + car_sz - 4], radius=4, outline=(255, 255, 255, 140), width=2)
+            draw_top.rounded_rectangle([car_x + 6, car_y + 6, car_x + car_sz + 2, car_y + car_sz + 2], radius=4, outline=(255, 255, 255, 180), width=2)
+            critical_bboxes["carousel_icon"] = {
+                "left": car_x,
+                "top": car_y,
+                "right": car_x + car_sz + 2,
+                "bottom": car_y + car_sz + 2
+            }
+
+            # ==================================================================
+            # LOWER SAFEZONE: Akademi Kripto Headline with Solid Highlight Strip
+            # ==================================================================
+            wrapped_headline = LayoutEngine.wrap_headline_punchy(actual_spec.headline, max_chars_per_line=22)
             
-            # Category Eyebrow Badge
-            badge_text = (design_spec.badge_text or "EDUKASI PROPERTI").upper().strip()
-            badge_font = self._load_font(22, bold=True)
-            draw.text((pad_x, curr_y), f"✦ {badge_text}", fill=accent_rgb, font=badge_font)
-            
-            # Subtle precision hairline next to badge
-            b_bbox = draw.textbbox((0, 0), f"✦ {badge_text}", font=badge_font)
-            badge_w = b_bbox[2] - b_bbox[0]
-            draw.line([(pad_x + badge_w + 18, curr_y + 12), (pad_x + badge_w + 120, curr_y + 12)], fill=(accent_rgb[0], accent_rgb[1], accent_rgb[2], 140), width=2)
-            curr_y += 44
-
-            # Giant editorial quotation mark for Opinion pieces
-            if is_opinion:
-                quote_font = self._load_font(72, bold=True)
-                draw.text((pad_x, curr_y - 20), "“", fill=(accent_rgb[0], accent_rgb[1], accent_rgb[2], 120), font=quote_font)
-                curr_y += 36
-
-            # LAYER 11: Deterministic Typography (Headline + Word Highlights)
-            max_headline_w = width - (pad_x * 2)
-            wrapped_headline = LayoutEngine.wrap_text(design_spec.headline, max_chars_per_line=19)
+            # Calculate optimal font size (target 66–78px extra-bold)
             headline_font, font_size = LayoutEngine.get_fitted_font(
                 wrapped_headline,
-                max_width=max_headline_w,
-                max_height=int(height * 0.28),
-                initial_size=54,
-                min_size=32
+                max_width=width - (pad_x * 2) - 40,
+                max_height=320,
+                initial_size=74,
+                min_size=46,
+                bold=True
             )
 
-            for line in wrapped_headline:
-                segments = LayoutEngine.segment_highlighted_line(line, design_spec.highlight_words)
-                lh = LayoutEngine.draw_highlighted_line(
-                    draw=draw,
-                    x=pad_x,
-                    y=curr_y,
-                    segments=segments,
-                    font=headline_font,
-                    primary_color=(255, 255, 255, 255),
-                    highlight_color=(accent_rgb[0], accent_rgb[1], accent_rgb[2], 255),
-                    with_shadow=True
+            # Calculate total height of headline block
+            temp_draw = ImageDraw.Draw(canvas)
+            hl_w, hl_h = LayoutEngine.calculate_text_bounding_box(
+                temp_draw, wrapped_headline, headline_font, line_spacing=int(font_size * 0.22)
+            )
+
+            # Position headline comfortably in the lower third (inside safezone y=135..1215)
+            has_sub = bool(actual_spec.subheadline)
+            has_badge = bool(actual_spec.badge_text)
+            extra_lower_h = (65 if has_sub else 0) + (35 if has_badge else 0)
+            target_max_y = SAFEZONE_BOTTOM - 20 - extra_lower_h
+            headline_y = min(target_max_y - hl_h, 1140 - hl_h)
+            headline_y = max(SAFEZONE_TOP + 280, headline_y)
+
+            # Render Headline with Akademi Kripto Solid Highlight Strip
+            end_hl_y, hl_bboxes = LayoutEngine.draw_editorial_headline_with_strips(
+                canvas=canvas,
+                lines=wrapped_headline,
+                highlight_terms=actual_spec.highlight_words,
+                start_x=pad_x,
+                start_y=headline_y,
+                font=headline_font,
+                font_size=font_size,
+                accent_rgb=accent_rgb
+            )
+            critical_bboxes.update(hl_bboxes)
+
+            # High-Contrast Subheadline Context (if provided)
+            draw_bottom = ImageDraw.Draw(canvas)
+            if actual_spec.subheadline and end_hl_y + 32 <= SAFEZONE_BOTTOM - 10:
+                sub_font = self._load_font(22, bold=False)
+                wrapped_sub = LayoutEngine.wrap_text(actual_spec.subheadline, max_chars_per_line=38)
+                sub_start_y = end_hl_y + 6
+                sub_max_r = pad_x + 16
+                for s_line in wrapped_sub[:2]:
+                    if end_hl_y + 26 <= SAFEZONE_BOTTOM - 10:
+                        draw_bottom.text((pad_x + 16, end_hl_y + 6), s_line, fill=(226, 232, 240, 240), font=sub_font)
+                        s_bbox = draw_bottom.textbbox((0, 0), s_line, font=sub_font)
+                        sub_max_r = max(sub_max_r, pad_x + 16 + (s_bbox[2] - s_bbox[0]))
+                        end_hl_y += (s_bbox[3] - s_bbox[1]) + 6
+
+                critical_bboxes["subheadline"] = {
+                    "left": pad_x + 16,
+                    "top": sub_start_y,
+                    "right": sub_max_r,
+                    "bottom": end_hl_y
+                }
+
+            # Optional Minimal Category Tag / Verification (strictly within safezone)
+            if actual_spec.badge_text and end_hl_y + 24 <= SAFEZONE_BOTTOM - 10:
+                badge_font = self._load_font(15, bold=True)
+                tag_y = end_hl_y + 8
+                tag_str = f"NUGIPROPERTI  •  {actual_spec.badge_text.upper()}"
+                draw_bottom.text((pad_x + 16, tag_y), tag_str, fill=(148, 163, 184, 190), font=badge_font)
+                b_bbox = draw_bottom.textbbox((0, 0), tag_str, font=badge_font)
+                critical_bboxes["category_badge"] = {
+                    "left": pad_x + 16,
+                    "top": tag_y,
+                    "right": pad_x + 16 + (b_bbox[2] - b_bbox[0]),
+                    "bottom": tag_y + (b_bbox[3] - b_bbox[1])
+                }
+
+            # Optional Debug Overlay (Phase 3D-3, strictly disabled in production)
+            final_canvas = canvas
+            if debug_safezone:
+                final_canvas = LayoutEngine.draw_debug_safezone_overlay(
+                    canvas=canvas,
+                    critical_bboxes=critical_bboxes
                 )
-                curr_y += lh + int(font_size * 0.20)
-
-            curr_y += 16
-
-            # Supporting Subheadline
-            if design_spec.subheadline:
-                sub_font = self._load_font(24, bold=False)
-                wrapped_sub = LayoutEngine.wrap_text(design_spec.subheadline, max_chars_per_line=36)
-                for s_line in wrapped_sub[:3]:
-                    draw.text((pad_x, curr_y), s_line, fill=(203, 213, 225, 255), font=sub_font)
-                    s_bbox = draw.textbbox((0, 0), s_line, font=sub_font)
-                    curr_y += (s_bbox[3] - s_bbox[1]) + 8
-
-            # Empirical Metric Pill Callout (Case Study & Data Editorial)
-            if design_spec.metric_value:
-                curr_y += 12
-                m_font = self._load_font(22, bold=True)
-                m_label = design_spec.metric_label or "Pertumbuhan Efisiensi"
-                m_text = f"✦ {design_spec.metric_value}  |  {m_label}"
-                m_bbox = draw.textbbox((0, 0), m_text, font=m_font)
-                m_w = m_bbox[2] - m_bbox[0] + 32
-                m_h = 38
-                draw.rounded_rectangle([pad_x, curr_y, pad_x + m_w, curr_y + m_h], radius=8, fill=(16, 185, 129, 35), outline=(16, 185, 129, 140), width=1)
-                draw.text((pad_x + 16, curr_y + 8), m_text, fill=(16, 185, 129, 255), font=m_font)
-                curr_y += m_h + 12
-
-            # Numbered Index Listicle Items (01, 02, 03)
-            elif design_spec.bullet_points and len(design_spec.bullet_points) > 0:
-                curr_y += 10
-                pt_font = self._load_font(21, bold=False)
-                idx_font = self._load_font(20, bold=True)
-                for i, pt in enumerate(design_spec.bullet_points[:3]):
-                    num_str = f"0{i+1}"
-                    draw.text((pad_x, curr_y), num_str, fill=accent_rgb, font=idx_font)
-                    draw.text((pad_x + 36, curr_y), pt, fill=(226, 232, 240, 255), font=pt_font)
-                    curr_y += 32
-
-            # Property Showcase Location & Price Badge
-            elif design_spec.property_location or design_spec.property_price:
-                curr_y += 10
-                spec_font = self._load_font(21, bold=True)
-                loc_text = f"📍 {design_spec.property_location or 'Bandung'}"
-                price_text = f"🏷️ {design_spec.property_price or 'Yield 12%'}"
-                draw.text((pad_x, curr_y), loc_text, fill=(203, 213, 225, 255), font=spec_font)
-                draw.text((pad_x + 280, curr_y), price_text, fill=accent_rgb, font=spec_font)
-                curr_y += 34
-
-            # CTA Button ONLY if CTA_REQUIRED or CTA_OPTIONAL with valid text
-            if design_spec.cta_strategy in (CTAStrategy.CTA_REQUIRED, CTAStrategy.CTA_OPTIONAL) and design_spec.cta_text:
-                cta_font = self._load_font(20, bold=True)
-                cta_y = height - 135
-                cta_rect = [pad_x, cta_y, pad_x + 310, cta_y + 50]
-                draw.rounded_rectangle(cta_rect, radius=12, fill=accent_rgb)
-                draw.text((pad_x + 22, cta_y + 13), design_spec.cta_text, fill=(7, 11, 20, 255), font=cta_font)
-
-            # LAYER 12: Brand Identity & Signature Watermark Footer
-            footer_y = height - 60
-            draw.line([(pad_x, footer_y - 12), (width - pad_x, footer_y - 12)], fill=(255, 255, 255, 30), width=1)
-            footer_font = self._load_font(18, bold=True)
-            draw.text((pad_x, footer_y), f"⚡ {design_spec.brand_name.upper()}", fill=(148, 163, 184, 255), font=footer_font)
-            draw.text((width - pad_x - 170, footer_y), "Editorial Art Direction", fill=(100, 116, 139, 255), font=footer_font)
 
             # Export to PNG bytes
             buffer = io.BytesIO()
-            final_rgb = canvas.convert("RGB")
+            final_rgb = final_canvas.convert("RGB")
             final_rgb.save(buffer, format="PNG", optimize=True)
             rendered_bytes = buffer.getvalue()
 
             latency_ms = int((time.time() - start_time) * 1000)
             render_metadata = {
-                "engine": "ProfessionalCompositingEngine_v3D",
+                "engine": "ProfessionalCompositingEngine_v3D3_SafezoneEnforced",
                 "layers_count": 13,
-                "color_grade_preset": grade.preset_name,
+                "debug_safezone": debug_safezone,
+                "safezone": {
+                    "top": SAFEZONE_TOP,
+                    "bottom": SAFEZONE_BOTTOM,
+                    "height": SAFEZONE_HEIGHT,
+                    "left_crop_3_4": 34,
+                    "right_crop_3_4": 34,
+                    "grid_3_4_width": 1012,
+                    "grid_3_4_height": 1350,
+                    "safezone_left": SAFEZONE_LEFT,
+                    "safezone_right": SAFEZONE_RIGHT,
+                    "safezone_content_left": SAFEZONE_CONTENT_LEFT,
+                    "safezone_content_right": SAFEZONE_CONTENT_RIGHT,
+                    "width": width,
+                    "height": height
+                },
+                "critical_element_bounding_boxes": critical_bboxes,
+                "headline_font_size": font_size,
+                "highlight_strip_accent": accent_hex,
                 "width": width,
                 "height": height,
-                "aspect_ratio": "4:5" if height == 1350 else "1:1",
-                "cta_strategy": design_spec.cta_strategy.value,
-                "accent_color": accent_hex,
+                "aspect_ratio": "4:5",
+                "cta_strategy": actual_spec.cta_strategy.value,
                 "render_latency_ms": max(latency_ms, 25)
             }
             return rendered_bytes, render_metadata
 
         except Exception as e:
-            logger.exception(f"Professional compositing failed: {str(e)}")
+            logger.exception(f"Compositing execution failed: {str(e)}")
             raise RenderingError(f"Failed to execute layered compositing: {str(e)}")

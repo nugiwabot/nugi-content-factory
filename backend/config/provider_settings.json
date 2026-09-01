@@ -1,0 +1,19 @@
+{
+  "llm": {
+    "provider": "mock",
+    "base_url": null,
+    "api_key": null,
+    "model": "mock-model"
+  },
+  "image": {
+    "provider": "mock",
+    "endpoint_url": null,
+    "api_key": null,
+    "model": "mock-flux"
+  },
+  "compute": {
+    "provider": "local",
+    "endpoint_id": null,
+    "api_key": null
+  }
+}

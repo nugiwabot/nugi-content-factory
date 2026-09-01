@@ -43,10 +43,11 @@ class ContentGenerationAgent:
         self,
         brief: UserBriefInput,
         db: Optional[Session] = None,
-        image_provider_type: Optional[str] = None
+        image_provider_type: str = "flux",
+        debug_safezone: bool = False
     ) -> ContentPackage:
         """
-        Executes the full layered pipeline:
+        Executes end-to-end editorial generation pipeline (Phase 3D-3 Safezone Enforcement):
         Brief -> Strategy -> Headline -> Caption -> Visual Concept -> Asset Plan ->
         13-Layer Compositing -> Visual QA -> Multi-Variant Planning -> DB Save.
         """
@@ -81,12 +82,12 @@ class ContentGenerationAgent:
             "Tidak membuat janji temu survey yang spesifik"
         ] if strat["content_type"] == ContentType.PROPERTY_LISTICLE else []
 
-        metric_val = "+300%" if strat["content_type"] == ContentType.PROPERTY_CASE_STUDY else None
-        metric_lbl = "Kecepatan Respon & Janji Survey" if strat["content_type"] == ContentType.PROPERTY_CASE_STUDY else None
+        metric_val = "+300%" if strat["content_type"] == ContentType.PROPERTY_CASE_STUDY else ("12.4%" if strat["content_type"] == ContentType.DATA_EDITORIAL else None)
+        metric_lbl = "Kecepatan Respon & Janji Survey" if strat["content_type"] == ContentType.PROPERTY_CASE_STUDY else ("Yield Sewa Rata-rata" if strat["content_type"] == ContentType.DATA_EDITORIAL else None)
 
-        prop_loc = "Jatinangor, Sumedang" if strat["content_type"] == ContentType.PROPERTY_SHOWCASE else None
-        prop_price = "Mulai Rp 1,85 Miliar" if strat["content_type"] == ContentType.PROPERTY_SHOWCASE else None
-        prop_feat = ["16 Kamar Kost", "Yield 12%/thn", "SHM Siap"] if strat["content_type"] == ContentType.PROPERTY_SHOWCASE else []
+        prop_loc = "Jatinangor, Sumedang" if strat["content_type"] in (ContentType.PROPERTY_SHOWCASE, ContentType.SOFT_SELLING) else None
+        prop_price = "Mulai Rp 1,85 Miliar" if strat["content_type"] in (ContentType.PROPERTY_SHOWCASE, ContentType.SOFT_SELLING) else None
+        prop_feat = ["16 Kamar Kost", "Yield 12%/thn", "SHM Siap"] if strat["content_type"] in (ContentType.PROPERTY_SHOWCASE, ContentType.SOFT_SELLING) else []
 
         editorial_spec = EditorialContentSpecification(
             content_type=strat["content_type"],
@@ -120,7 +121,7 @@ class ContentGenerationAgent:
             width=1080,
             height=1350
         )
-        plan = AssetCompositorService.build_composition_plan(concept, design_spec.accent_color_hex or "#38bdf8")
+        plan = AssetCompositorService.build_composition_plan(concept, design_spec.accent_color_hex or "#8b5cf6")
 
         # 7. Generate Background Asset (Flux with Mock Fallback)
         img_provider = ProviderFactory.get_image_provider(image_provider_type)
@@ -131,11 +132,12 @@ class ContentGenerationAgent:
         )
 
         # 8. 13-Layer Compositing Engine Execution
+        design_spec.background_image_bytes = bg_output.image_bytes
         rendered_bytes, meta = self.compositing_engine.composite_full_artwork(
-            concept=concept,
             design_spec=design_spec,
-            plan=plan,
-            background_bytes=bg_output.image_bytes
+            plan=art_direction,
+            concept=concept,
+            debug_safezone=debug_safezone
         )
 
         # 9. Persist Asset to Storage

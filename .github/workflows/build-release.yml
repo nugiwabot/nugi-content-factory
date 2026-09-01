@@ -1,0 +1,112 @@
+name: Windows Desktop Release & Build Pipeline
+
+on:
+  push:
+    branches: [ main, master ]
+    tags:
+      - 'v*'
+  pull_request:
+    branches: [ main, master ]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build-windows:
+    name: Build & Package Windows x64 Application
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+
+      - name: Set up Node.js 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+          cache-dependency-path: 'frontend/package-lock.json'
+
+      - name: Install Inno Setup
+        run: |
+          choco install innosetup --no-progress
+
+      - name: Install Python Dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r backend/requirements.txt
+          pip install pyinstaller pywebview
+
+      - name: Install Frontend Dependencies
+        working-directory: frontend
+        run: |
+          npm ci
+
+      - name: Run Backend Automated Tests (Quality Gate 1)
+        working-directory: backend
+        run: |
+          pytest -v
+
+      - name: Build Frontend Production Bundle (Quality Gate 2)
+        working-directory: frontend
+        run: |
+          npm run build
+
+      - name: Generate Windows Icon Assets
+        working-directory: backend
+        run: |
+          python scripts/generate_ico.py
+
+      - name: Package Desktop Executable via PyInstaller
+        run: |
+          pyinstaller --noconfirm packaging/desktop.spec
+
+      - name: Compile Inno Setup Windows Installer
+        run: |
+          & "C:\Program Files (x86)\Inno Setup 6\ISCC.exe" packaging/installer.iss
+
+      - name: Create Portable Distribution Archive (.zip)
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force -Path release
+          Compress-Archive -Path "dist/Nugi Content Factory/*" -DestinationPath "release/Nugi-Content-Factory-Windows-x64-Portable.zip" -Force
+
+      - name: Run Windows Installer Smoke Test (Quality Gate 4)
+        run: |
+          python packaging/test_installer_smoke.py
+
+      - name: Compute SHA256 Checksums
+        shell: pwsh
+        working-directory: release
+        run: |
+          Get-ChildItem -File | Where-Object { $_.Name -ne 'SHA256SUMS.txt' } | ForEach-Object {
+            $hash = (Get-FileHash $_.FullName -Algorithm SHA256).Hash.ToLower()
+            "$hash  $($_.Name)" | Out-File -FilePath SHA256SUMS.txt -Append -Encoding utf8
+          }
+          Get-Content SHA256SUMS.txt
+
+      - name: Upload Packaging Artifacts to Workflow Run
+        uses: actions/upload-artifact@v4
+        with:
+          name: Nugi-Content-Factory-Windows-x64
+          path: release/*
+          retention-days: 30
+
+      - name: Create GitHub Release (On Tag Push)
+        if: startsWith(github.ref, 'refs/tags/v')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            release/Nugi-Content-Factory-Windows-x64-Setup.exe
+            release/Nugi-Content-Factory-Windows-x64-Portable.zip
+            release/SHA256SUMS.txt
+          generate_release_notes: true
+          draft: false
+          prerelease: false

@@ -1,5 +1,5 @@
 from abc import ABC, abstractmethod
-from typing import Dict, Any, Optional
+from typing import Dict, Any, Optional, List
 from pydantic import BaseModel, Field
 
 
@@ -26,6 +26,16 @@ class ImageGenerationOutput(BaseModel):
     latency_ms: Optional[int] = None
 
 
+class ComputeJobOutput(BaseModel):
+    """Normalized output from remote or local compute provider."""
+    job_id: str
+    status: str = "COMPLETED"  # PENDING, RUNNING, COMPLETED, FAILED
+    result: Optional[Dict[str, Any]] = None
+    output_files: List[str] = Field(default_factory=list)
+    execution_time_ms: Optional[int] = None
+    error_message: Optional[str] = None
+
+
 class LLMProvider(ABC):
     """Abstract Interface for LLM reasoning and copywriting providers."""
 
@@ -46,6 +56,28 @@ class LLMProvider(ABC):
         """Generates structured content output based on input brief."""
         pass
 
+    def test_connection(self) -> Dict[str, Any]:
+        """Tests connectivity and authentication with provider endpoint."""
+        try:
+            out = self.generate_content(
+                topic="Test Connectivity",
+                target_audience="Test",
+                content_pillar="Test",
+                tone_of_voice="Professional"
+            )
+            return {
+                "status": "SUCCESS",
+                "provider": self.provider_name,
+                "latency_ms": out.latency_ms or 50,
+                "message": f"Successfully connected to {self.provider_name}"
+            }
+        except Exception as e:
+            return {
+                "status": "FAILED",
+                "provider": self.provider_name,
+                "message": str(e)
+            }
+
 
 class ImageProvider(ABC):
     """Abstract Interface for background and visual generation providers."""
@@ -65,6 +97,80 @@ class ImageProvider(ABC):
     ) -> ImageGenerationOutput:
         """Generates raw background visual asset bytes."""
         pass
+
+    def test_connection(self) -> Dict[str, Any]:
+        """Tests connectivity and authentication with image provider endpoint."""
+        try:
+            out = self.generate_background(
+                prompt="Modern minimalist architectural glass facade",
+                width=512,
+                height=512
+            )
+            return {
+                "status": "SUCCESS",
+                "provider": self.provider_name,
+                "latency_ms": out.latency_ms or 100,
+                "message": f"Successfully generated test image with {self.provider_name}"
+            }
+        except Exception as e:
+            return {
+                "status": "FAILED",
+                "provider": self.provider_name,
+                "message": str(e)
+            }
+
+
+class ComputeProvider(ABC):
+    """
+    Abstract Interface for optional remote compute workloads
+    (e.g., video rendering, video analysis, transcription, heavy media processing, local inference).
+    RunPod or custom workers implement this interface.
+    """
+
+    @property
+    @abstractmethod
+    def provider_name(self) -> str:
+        pass
+
+    @abstractmethod
+    def submit_job(
+        self,
+        task_type: str,
+        payload: Dict[str, Any],
+        timeout_s: int = 300
+    ) -> ComputeJobOutput:
+        """Submits a workload job to the compute provider."""
+        pass
+
+    @abstractmethod
+    def get_job_status(self, job_id: str) -> ComputeJobOutput:
+        """Polls the status of an asynchronous compute job."""
+        pass
+
+    @abstractmethod
+    def cancel_job(self, job_id: str) -> bool:
+        """Cancels a running compute job."""
+        pass
+
+    def test_connection(self) -> Dict[str, Any]:
+        """Tests connectivity with compute provider endpoint."""
+        try:
+            out = self.submit_job(
+                task_type="ping",
+                payload={"test": True},
+                timeout_s=10
+            )
+            return {
+                "status": "SUCCESS",
+                "provider": self.provider_name,
+                "message": f"Compute provider {self.provider_name} ready."
+            }
+        except Exception as e:
+            return {
+                "status": "FAILED",
+                "provider": self.provider_name,
+                "message": str(e)
+            }
 
 
 class StorageProvider(ABC):

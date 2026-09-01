@@ -19,22 +19,24 @@ class ContentStrategyService:
             content_type = brief.content_type_override
         elif any(k in topic_lower for k in ["kesalahan", "tips", "langkah", "alasan", "5 ", "3 ", "7 "]):
             content_type = ContentType.PROPERTY_LISTICLE
-        elif any(k in topic_lower for k in ["studi kasus", "hasil transformasi", "closing naik", "efisiensi"]):
+        elif any(k in topic_lower for k in ["studi kasus", "hasil transformasi", "closing naik", "efisiensi", "conversion rate", "300%"]):
             content_type = ContentType.PROPERTY_CASE_STUDY
         elif any(k in topic_lower for k in ["data & statistik", "diagram yield", "data pasar", "grafik"]):
             content_type = ContentType.DATA_EDITORIAL
-        elif any(k in topic_lower for k in ["rukost", "kavling", "unit", "villa", "apartemen", "showcase"]):
+        elif any(k in topic_lower for k in ["rukost", "kavling", "unit", "villa", "apartemen", "showcase", "rumah premium", "parahyangan"]):
             content_type = ContentType.PROPERTY_SHOWCASE
         elif any(k in topic_lower for k in ["promo", "daftar audit", "konsultasi gratis", "slot terbatas"]):
             content_type = ContentType.PROPERTY_SALES_OFFER
         elif any(k in topic_lower for k in ["lifestyle", "gaya hidup", "clubhouse", "residensial asri"]):
             content_type = ContentType.SOFT_SELLING
-        elif any(k in topic_lower for k in ["tol", "infrastruktur", "tren", "pasar", "naik lebih cepat", "kenaikan harga"]):
+        elif any(k in topic_lower for k in ["tol", "infrastruktur", "tren", "pasar", "naik lebih cepat", "kenaikan harga", "daya beli", "harga rumah"]):
             content_type = ContentType.PROPERTY_INSIGHT
         elif any(k in topic_lower for k in ["opini", "menolak otomasi", "masa depan pemasaran"]):
             content_type = ContentType.PROPERTY_OPINION
-        elif any(k in topic_lower for k in ["masalah", "lambat", "dingin", "boncos", "gagal", "bocor", "kenapa"]):
+        elif any(k in topic_lower for k in ["masalah", "lambat", "dingin", "boncos", "gagal", "bocor", "follow-up", "closing tetap", "rendah", "leads"]):
             content_type = ContentType.PROPERTY_PROBLEM
+        elif any(k in topic_lower for k in ["lokasi bagus", "cepat laku", "edukasi", "panduan", "kenapa"]):
+            content_type = ContentType.PROPERTY_EDUCATION
         else:
             content_type = ContentType.PROPERTY_EDUCATION
 

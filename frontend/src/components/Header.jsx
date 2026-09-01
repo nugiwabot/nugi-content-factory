@@ -5,9 +5,13 @@ export default function Header({ projects, currentProject, setCurrentProject, on
   return (
     <header className="top-navbar">
       <div className="brand-title-box">
-        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-          <span style={{ fontSize: '1.4rem' }}>⚡</span>
-          <h1 className="brand-title">Nugi Content Factory</h1>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+          <img 
+            src="/nugi_properti_logo.png" 
+            alt="NUGIPROPERTI Logo" 
+            style={{ height: '28px', width: 'auto', objectFit: 'contain' }} 
+          />
+          <span style={{ color: 'var(--text-dim)', fontSize: '0.85rem', fontWeight: 600 }}>| Content Factory</span>
         </div>
         <span className="brand-badge">Property Edition v0.1</span>
       </div>
