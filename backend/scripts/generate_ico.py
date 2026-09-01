@@ -3,13 +3,13 @@ from pathlib import Path
 from PIL import Image
 
 def generate_ico():
-    brand_dir = Path("c:/Users/Nugi/Documents/nugi-content-factory/assets/brand")
+    root_dir = Path(__file__).resolve().parent.parent.parent
+    brand_dir = root_dir / "assets" / "brand"
     brand_dir.mkdir(parents=True, exist_ok=True)
     
     avatar_path = brand_dir / "nugi_properti_avatar_purple_1024x1024.png"
     if not avatar_path.exists():
-        # Fallback to scratch or logo
-        avatar_path = Path("c:/Users/Nugi/.gemini/antigravity-ide/brain/b80f175e-f63e-4113-aca5-af8b92fed644/scratch/nugi_properti_avatar_purple_1024x1024.png")
+        avatar_path = brand_dir / "nugi_properti_logo.png"
     
     img = Image.open(avatar_path).convert("RGBA")
     
