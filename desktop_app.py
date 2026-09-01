@@ -4,6 +4,7 @@ import time
 import socket
 import threading
 import webbrowser
+import multiprocessing
 from pathlib import Path
 
 # Add backend directory to sys.path
@@ -25,15 +26,19 @@ from app.main import app as fastapi_app
 
 
 def find_free_port(start_port: int = 8000, max_attempts: int = 50) -> int:
-    """Finds an available local port on 127.0.0.1."""
+    """Finds an available local port on 127.0.0.1 by testing socket binding."""
     for port in range(start_port, start_port + max_attempts):
-        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
-            if s.connect_ex(("127.0.0.1", port)) != 0:
+        try:
+            with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+                s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+                s.bind(("127.0.0.1", port))
                 return port
+        except OSError:
+            continue
     return start_port
 
 
-def wait_for_server(url: str, timeout_s: float = 12.0) -> bool:
+def wait_for_server(url: str, timeout_s: float = 15.0) -> bool:
     """Polls until the FastAPI server responds or timeout expires."""
     start_t = time.time()
     health_url = f"{url}/api/v1/health"
@@ -42,24 +47,33 @@ def wait_for_server(url: str, timeout_s: float = 12.0) -> bool:
             with httpx.Client(timeout=1.0) as client:
                 res = client.get(health_url)
                 if res.status_code == 200:
+                    logger.info(f"FastAPI server responded 200 OK at {health_url}")
                     return True
         except Exception:
             pass
-        time.sleep(0.2)
+        time.sleep(0.25)
     return False
 
 
 def run_server(host: str, port: int):
-    """Runs Uvicorn server in a dedicated thread."""
-    config = uvicorn.Config(
-        app=fastapi_app,
-        host=host,
-        port=port,
-        log_level="warning",
-        access_log=False
-    )
-    server = uvicorn.Server(config)
-    server.run()
+    """Runs Uvicorn server in a dedicated thread with its own asyncio event loop."""
+    try:
+        import asyncio
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+
+        config = uvicorn.Config(
+            app=fastapi_app,
+            host=host,
+            port=port,
+            log_level="info",
+            access_log=False,
+            loop="asyncio"
+        )
+        server = uvicorn.Server(config)
+        loop.run_until_complete(server.serve())
+    except Exception as e:
+        logger.error(f"Fatal exception in FastAPI uvicorn thread: {e}", exc_info=True)
 
 
 def main():
@@ -69,7 +83,7 @@ def main():
     port = find_free_port(settings.PORT)
     host = "127.0.0.1"
     server_url = f"http://{host}:{port}"
-    logger.info(f"Targeting local server URL: {server_url}")
+    logger.info(f"Starting server on: {server_url}")
 
     # Start FastAPI server in background daemon thread
     server_thread = threading.Thread(
@@ -80,9 +94,11 @@ def main():
     )
     server_thread.start()
 
-    # Wait for server readiness
-    if not wait_for_server(server_url):
-        logger.warning("Server startup check timed out; attempting to open window anyway.")
+    # Wait for server readiness before launching webview
+    ready = wait_for_server(server_url, timeout_s=15.0)
+    if not ready:
+        logger.warning("Server readiness check timed out! Retrying health check once more...")
+        time.sleep(1.0)
 
     # Try PyWebView Native Window with Edge WebView2
     opened_window = False
@@ -91,6 +107,8 @@ def main():
         logger.info("Launching native desktop window via PyWebView (Edge WebView2)...")
         
         icon_path = root_dir / "assets" / "brand" / "app.ico"
+        if not icon_path.exists():
+            icon_path = None
         
         window = webview.create_window(
             title="Nugi Content Factory — Property Edition",
@@ -129,4 +147,5 @@ def main():
 
 
 if __name__ == "__main__":
+    multiprocessing.freeze_support()
     main()

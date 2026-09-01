@@ -15,12 +15,19 @@ from app.api.v1.router import api_v1_router
 
 def find_frontend_dist() -> Path | None:
     """Locates the built frontend static distribution directory."""
+    exe_dir = Path(sys.executable).resolve().parent if getattr(sys, "frozen", False) else Path.cwd()
+    meipass_dir = Path(getattr(sys, "_MEIPASS", "."))
+    script_dir = Path(__file__).resolve().parent
+
     candidates = [
-        Path(getattr(sys, "_MEIPASS", ".")) / "frontend" / "dist",
-        Path(__file__).resolve().parent.parent.parent / "frontend" / "dist",
-        Path(__file__).resolve().parent.parent / "frontend" / "dist",
-        Path("frontend/dist"),
-        Path("dist")
+        meipass_dir / "frontend" / "dist",
+        meipass_dir / "_internal" / "frontend" / "dist",
+        exe_dir / "_internal" / "frontend" / "dist",
+        exe_dir / "frontend" / "dist",
+        script_dir.parent.parent.parent / "frontend" / "dist",
+        script_dir.parent.parent / "frontend" / "dist",
+        Path.cwd() / "frontend" / "dist",
+        Path.cwd() / "dist",
     ]
     for c in candidates:
         if c.exists() and (c / "index.html").exists():
