@@ -160,11 +160,11 @@ nugi-content-factory/
 * **Phase 1: Foundation Architecture:** ✅ **COMPLETED (17/17 Tests Passed)**
 * **Phase 2: Brand & Design Intelligence:** ✅ **COMPLETED (35/35 Tests Passed)**
 * **Phase 3A: Professional Editorial Visual Engine:** ✅ **COMPLETED (41/41 Tests Passed)**
-  - Content -> Art Direction -> Visual Composition -> Render
-  - 7 Editorial Archetypes (`HERO_IMAGE_EDITORIAL`, `SPLIT_EDITORIAL`, `CINEMATIC_OVERLAY`, `DATA_EDITORIAL`, `LIST_EDITORIAL`, `MINIMAL_EDITORIAL`, `PROPERTY_SHOWCASE`)
-  - Strict CTA Business Rules (`CTA_NONE`, `CTA_OPTIONAL`, `CTA_REQUIRED`)
-  - Flux Provider Architecture with Graceful Mock Fallback
-  - Visual Prompt Specification with Negative Space Awareness
-  - Extended Editorial Visual QA Engine (41/41 Tests Passing)
-* **Phase 3B: Content & Art Direction AI Agent:** *Pending Next Phase*
+* **Phase 3B: AI Content & Art Direction Agent:** ✅ **COMPLETED (48/48 Tests Passed)**
+  - Separation: Content Intelligence -> Art Direction -> Deterministic Rendering
+  - 8 Controlled Property Content Types (`PROPERTY_EDUCATION` to `PROPERTY_SALES_OFFER`)
+  - Strict CTA Business Rules (`CTA_NONE` on articles, `CTA_REQUIRED` on offers)
+  - Modular Independent Regeneration (Headline, Caption, Visual Concept)
+  - Full-featured React Vite AI Content Studio
+  - 48/48 Automated Tests Passing (100%)
 * **Phase 4: Windows Desktop Packaging (`Setup.exe`):** *Documented in `docs/WINDOWS_PACKAGING_PLAN.md`*

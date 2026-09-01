@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import Header from './components/Header';
 import Sidebar from './components/Sidebar';
+import AIContentStudio from './components/AIContentStudio';
 import DesignPreviewStudio from './components/DesignPreviewStudio';
 import ProjectView from './components/ProjectView';
 import BriefCreator from './components/BriefCreator';
@@ -11,7 +12,7 @@ import SettingsModal from './components/SettingsModal';
 import { api } from './services/api';
 
 export default function App() {
-  const [activeTab, setActiveTab] = useState('design_studio');
+  const [activeTab, setActiveTab] = useState('ai_studio');
   const [projects, setProjects] = useState([]);
   const [currentProject, setCurrentProject] = useState(null);
   const [brands, setBrands] = useState([]);
@@ -106,7 +107,7 @@ export default function App() {
           currentProject={currentProject}
           setCurrentProject={setCurrentProject}
           onOpenSettings={() => setShowSettings(true)}
-          onQuickGenerate={() => setActiveTab('briefs')}
+          onQuickGenerate={() => setActiveTab('ai_studio')}
           healthStatus={healthStatus}
         />
 
@@ -116,6 +117,10 @@ export default function App() {
           </div>
         ) : (
           <>
+            {activeTab === 'ai_studio' && (
+              <AIContentStudio currentProject={currentProject} />
+            )}
+
             {activeTab === 'design_studio' && (
               <DesignPreviewStudio />
             )}

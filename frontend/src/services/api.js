@@ -24,6 +24,13 @@ export const api = {
   // Brand DNA
   getBrandDna: () => apiClient.get('/brand/nugi-properti'),
 
+  // Phase 3B AI Content & Art Direction Studio
+  generateAIContent: (data) => apiClient.post('/ai-studio/generate', data),
+  regenerateHeadline: (data) => apiClient.post('/ai-studio/regenerate/headline', data),
+  regenerateCaption: (data) => apiClient.post('/ai-studio/regenerate/caption', data),
+  regenerateVisual: (data) => apiClient.post('/ai-studio/regenerate/visual', data),
+  renderCustomSpec: (data) => apiClient.post('/ai-studio/render', data),
+
   // Phase 3A Editorial Visual Engine
   getEditorialCompositions: () => apiClient.get('/editorial/compositions'),
   renderEditorial: (data) => apiClient.post('/editorial/render', data),

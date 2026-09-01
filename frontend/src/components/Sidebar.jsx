@@ -1,9 +1,10 @@
 import React from 'react';
-import { LayoutGrid, FileText, Image as ImageIcon, Palette, Clock, Layers } from 'lucide-react';
+import { LayoutGrid, FileText, Image as ImageIcon, Palette, Clock, Layers, Sparkles } from 'lucide-react';
 
 export default function Sidebar({ activeTab, setActiveTab }) {
   const menuItems = [
-    { id: 'design_studio', label: 'Design Studio (1080x1350)', icon: Layers },
+    { id: 'ai_studio', label: 'AI Content Studio', icon: Sparkles, badge: 'Phase 3B' },
+    { id: 'design_studio', label: 'Design Engine (1080x1350)', icon: Layers },
     { id: 'studio', label: 'Content Gallery', icon: ImageIcon },
     { id: 'briefs', label: 'AI Brief Creator', icon: FileText },
     { id: 'projects', label: 'Project Workspaces', icon: LayoutGrid },
@@ -30,7 +31,7 @@ export default function Sidebar({ activeTab, setActiveTab }) {
               style={{
                 display: 'flex',
                 alignItems: 'center',
-                gap: '12px',
+                justifyContent: 'space-between',
                 width: '100%',
                 padding: '10px 14px',
                 borderRadius: 'var(--radius-md)',
@@ -44,8 +45,15 @@ export default function Sidebar({ activeTab, setActiveTab }) {
                 transition: 'all 0.15s ease'
               }}
             >
-              <Icon size={18} />
-              <span>{item.label}</span>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                <Icon size={18} />
+                <span>{item.label}</span>
+              </div>
+              {item.badge && (
+                <span style={{ fontSize: '0.65rem', background: 'rgba(56, 189, 248, 0.2)', color: 'var(--accent-cyan)', padding: '2px 6px', borderRadius: '4px', fontWeight: 700 }}>
+                  {item.badge}
+                </span>
+              )}
             </button>
           );
         })}
@@ -53,8 +61,8 @@ export default function Sidebar({ activeTab, setActiveTab }) {
 
       <div style={{ marginTop: 'auto', padding: '18px', borderTop: '1px solid var(--border-subtle)' }}>
         <div style={{ background: 'rgba(0,0,0,0.3)', padding: '12px', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-subtle)' }}>
-          <p style={{ fontSize: '0.74rem', fontWeight: 700, color: 'var(--accent-cyan)' }}>Design Brain: Phase 2 Active</p>
-          <p style={{ fontSize: '0.68rem', color: 'var(--text-dim)', marginTop: '2px' }}>6 Templates • 1080x1350 Ready</p>
+          <p style={{ fontSize: '0.74rem', fontWeight: 700, color: 'var(--accent-cyan)' }}>AI Content Agent: Active</p>
+          <p style={{ fontSize: '0.68rem', color: 'var(--text-dim)', marginTop: '2px' }}>Content Strategy + Art Direction</p>
         </div>
       </div>
     </aside>
