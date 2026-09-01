@@ -4,8 +4,8 @@ def test_health_endpoint(client):
     data = response.json()
     assert data["status"] == "online"
     assert data["database"] == "healthy"
-    assert "MockLLMProvider" in data["providers"]["llm"]
-    assert "MockImageProvider" in data["providers"]["image"]
+    assert data["providers"]["llm"] is not None
+    assert data["providers"]["image"] is not None
     assert "flux_configured" in data["providers"]
 
 

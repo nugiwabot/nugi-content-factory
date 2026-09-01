@@ -16,9 +16,12 @@ class ProviderFactory:
         p_type = (provider_type or settings.LLM_PROVIDER).lower()
         if p_type == "mock":
             return MockLLMProvider()
+        elif p_type == "openrouter":
+            from app.providers.openrouter_llm import OpenRouterLLMProvider
+            return OpenRouterLLMProvider()
         raise ProviderError(
             provider=p_type,
-            message=f"LLM Provider '{p_type}' is not configured for Phase 1. Use 'mock'."
+            message=f"LLM Provider '{p_type}' is not configured. Supported: 'mock', 'openrouter'."
         )
 
     @staticmethod

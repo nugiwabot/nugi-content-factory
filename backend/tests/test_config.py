@@ -2,7 +2,7 @@ from app.core.config import Settings
 
 
 def test_settings_defaults():
-    settings = Settings()
+    settings = Settings(_env_file=None)
     assert settings.APP_NAME == "Nugi Content Factory"
     assert settings.LLM_PROVIDER == "mock"
     assert settings.IMAGE_PROVIDER == "mock"
@@ -11,7 +11,7 @@ def test_settings_defaults():
 
 
 def test_storage_path_resolution(tmp_path):
-    settings = Settings(STORAGE_BASE_DIR=str(tmp_path / "custom_storage"))
+    settings = Settings(_env_file=None, STORAGE_BASE_DIR=str(tmp_path / "custom_storage"))
     resolved = settings.storage_path
     assert resolved.exists()
     assert resolved.is_dir()

@@ -1,6 +1,8 @@
 import pytest
 from app.providers.mock_llm import MockLLMProvider
 from app.providers.mock_image import MockImageProvider
+from app.providers.flux_image import FluxImageProvider
+from app.providers.openrouter_llm import OpenRouterLLMProvider
 from app.providers.local_storage import LocalStorageProvider
 from app.providers.factory import ProviderFactory
 from app.core.errors import ProviderError
@@ -20,6 +22,29 @@ def test_mock_llm_provider():
     assert "#" in output.hashtags
     assert output.visual_concept_prompt is not None
     assert output.latency_ms is not None
+
+
+def test_openrouter_llm_provider_fallback_safe():
+    provider = OpenRouterLLMProvider(api_key="")
+    output = provider.generate_content(
+        topic="3 Kesalahan Fatal Follow Up Leads Iklan Properti",
+        target_audience="Sales Manager & Agent Properti",
+        content_pillar="educational",
+        tone_of_voice="professional_authoritative"
+    )
+    assert output.headline is not None
+    assert output.body_caption is not None
+
+
+def test_flux_image_provider_fallback_safe():
+    provider = FluxImageProvider(api_key="")
+    output = provider.generate_background(
+        prompt="Modern luxury architectural background",
+        width=500,
+        height=500
+    )
+    assert output.image_bytes is not None
+    assert len(output.image_bytes) > 100
 
 
 def test_mock_image_provider():
@@ -52,8 +77,14 @@ def test_provider_factory_mock():
     llm = ProviderFactory.get_llm_provider("mock")
     assert llm.provider_name == "MockLLMProvider"
 
+    llm_or = ProviderFactory.get_llm_provider("openrouter")
+    assert "OpenRouterLLMProvider" in llm_or.provider_name
+
     img = ProviderFactory.get_image_provider("mock")
     assert img.provider_name == "MockImageProvider"
+
+    img_flux = ProviderFactory.get_image_provider("flux")
+    assert "FluxImageProvider" in img_flux.provider_name
 
     storage = ProviderFactory.get_storage_provider("local")
     assert isinstance(storage, LocalStorageProvider)
@@ -61,4 +92,10 @@ def test_provider_factory_mock():
 
 def test_provider_factory_invalid():
     with pytest.raises(ProviderError):
-        ProviderFactory.get_llm_provider("unsupported_ai")
+        ProviderFactory.get_llm_provider("invalid_provider")
+
+    with pytest.raises(ProviderError):
+        ProviderFactory.get_image_provider("invalid_provider")
+
+    with pytest.raises(ProviderError):
+        ProviderFactory.get_storage_provider("invalid_provider")
