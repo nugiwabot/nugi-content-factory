@@ -6,131 +6,144 @@ from pathlib import Path
 backend_dir = Path(__file__).resolve().parent.parent / "backend"
 sys.path.insert(0, str(backend_dir))
 
-from app.rendering.template_renderer import TemplateRenderer
-from app.schemas.design_spec import DesignSpecification
+from app.rendering.editorial_renderer import EditorialRenderer
+from app.schemas.design_spec import (
+    DesignSpecification,
+    CompositionType,
+    CTAStrategy,
+    ImageStrategy,
+    OverlayStrategy
+)
 from app.services.visual_qa import VisualQAService
 from PIL import Image
 import io
 
+
 def run_sample_renders():
     output_dir = Path(__file__).resolve().parent.parent / "assets" / "generated"
     output_dir.mkdir(parents=True, exist_ok=True)
-    renderer = TemplateRenderer()
+    renderer = EditorialRenderer()
 
     samples = [
+        # 1. Property Educational Article (HERO_IMAGE_EDITORIAL, CTA_NONE)
         {
-            "template_id": "01_PROPERTY_PROBLEM",
-            "filename": "sample_01_property_problem_1080x1350.png",
+            "filename": "sample_01_property_education_hero_1080x1350.png",
             "spec": DesignSpecification(
-                template_id="01_PROPERTY_PROBLEM",
+                composition_type=CompositionType.HERO_IMAGE_EDITORIAL,
                 width=1080,
                 height=1350,
-                headline="LEADS IKLAN MASUK, TAPI SALES LAMBAT FOLLOW-UP?",
-                highlight_words=["LAMBAT FOLLOW-UP"],
-                subheadline="Setiap menit keterlambatan bisa membuat prospek berpindah ke kompetitor.",
-                badge_text="DILEMA SALES PROPERTI",
-                cta_text="Pelajari Solusinya →"
+                headline="KENAPA HARGA RUMAH DI DEKAT TOL BISA NAIK LEBIH CEPAT?",
+                highlight_words=["HARGA RUMAH", "NAIK LEBIH CEPAT"],
+                subheadline="Lokasi bukan hanya soal jarak. Aksesibilitas, aktivitas ekonomi, dan perkembangan kawasan ikut memengaruhi nilai apresiasi properti.",
+                badge_text="EDUKASI PROPERTI",
+                cta_strategy=CTAStrategy.CTA_NONE # Strictly NO CTA for Educational Articles
             )
         },
+        # 2. Property Market Insight (CINEMATIC_OVERLAY, CTA_NONE)
         {
-            "template_id": "02_PROPERTY_INSIGHT",
-            "filename": "sample_02_property_insight_1080x1350.png",
+            "filename": "sample_02_property_insight_overlay_1080x1350.png",
             "spec": DesignSpecification(
-                template_id="02_PROPERTY_INSIGHT",
+                composition_type=CompositionType.CINEMATIC_OVERLAY,
                 width=1080,
                 height=1350,
-                headline="KENAPA BIAYA IKLAN PROPERTI MAHAL TAPI CLOSING RENDAH?",
-                highlight_words=["CLOSING RENDAH"],
-                subheadline="Bukan iklannya yang salah, tapi funnel konversi WhatsApp yang bocor tanpa SLA follow-up.",
-                badge_text="MARKET INSIGHT",
-                cta_text="Simpan Postingan Ini ↗"
+                headline="BIAYA IKLAN PROPERTI MAHAL BUKAN KARENA ALGORITMA META",
+                highlight_words=["BUKAN KARENA ALGORITMA"],
+                subheadline="Penyebab utama CPA membengkak adalah penawaran unit yang generik dan respons follow-up tim sales yang lambat di atas 30 menit.",
+                badge_text="MARKET INTELLIGENCE",
+                cta_strategy=CTAStrategy.CTA_NONE
             )
         },
+        # 3. Property Listicle (LIST_EDITORIAL, CTA_NONE)
         {
-            "template_id": "03_NUMBER_LIST",
-            "filename": "sample_03_number_list_1080x1350.png",
+            "filename": "sample_03_property_listicle_1080x1350.png",
             "spec": DesignSpecification(
-                template_id="03_NUMBER_LIST",
+                composition_type=CompositionType.LIST_EDITORIAL,
                 width=1080,
                 height=1350,
                 headline="5 KESALAHAN FATAL FOLLOW-UP LEADS PROPERTI",
                 highlight_words=["KESALAHAN FATAL"],
                 bullet_points=[
-                    "Respon di atas 15 menit menurunkan closing 80%",
-                    "Template chat kaku tanpa menyebut nama prospek",
-                    "Tidak membuat janji temu survey yang spesifik",
-                    "Menyerah setelah hanya satu kali follow up"
+                    "Respon di atas 15 menit menurunkan closing hingga 80%",
+                    "Template pesan chat kaku tanpa personalisasi nama calon pembeli",
+                    "Tidak mengunci janji temu survey lokasi yang spesifik",
+                    "Menyerah setelah hanya satu kali follow up tanpa follow up kedua"
                 ],
-                badge_text="5 POIN KRUSIAL",
-                cta_text="Baca Selengkapnya di Caption ↓"
+                badge_text="POIN KRUSIAL",
+                cta_strategy=CTAStrategy.CTA_NONE
             )
         },
+        # 4. Property Case Study / Data (DATA_EDITORIAL, CTA_NONE)
         {
-            "template_id": "04_CASE_STUDY",
-            "filename": "sample_04_case_study_1080x1350.png",
+            "filename": "sample_04_property_case_study_data_1080x1350.png",
             "spec": DesignSpecification(
-                template_id="04_CASE_STUDY",
+                composition_type=CompositionType.DATA_EDITORIAL,
                 width=1080,
                 height=1350,
-                headline="TRANSFORMASI RESPONSE TIME LEADS GREN PROPERTYKOST",
+                headline="HASIL TRANSFORMASI RESPONSE TIME GREN PROPERTYKOST",
                 highlight_words=["TRANSFORMASI RESPONSE TIME"],
-                metric_value="+300% Speed",
-                metric_label="Waktu Respon & Janji Survey Prospek",
+                metric_value="+300%",
+                metric_label="Kecepatan Respon & Janji Survey Prospek",
+                subheadline="Penerapan sistem routing pesan instan berhasil meningkatkan konversi janji survey mahasiswa sebesar 300% dalam 60 hari.",
                 badge_text="STUDI KASUS & HASIL",
-                cta_text="Konsultasi Strategi →"
+                cta_strategy=CTAStrategy.CTA_NONE
             )
         },
+        # 5. Property Showcase (PROPERTY_SHOWCASE, CTA_OPTIONAL)
         {
-            "template_id": "05_PRODUCT_SOLUTION",
-            "filename": "sample_05_product_solution_1080x1350.png",
+            "filename": "sample_05_property_showcase_1080x1350.png",
             "spec": DesignSpecification(
-                template_id="05_PRODUCT_SOLUTION",
+                composition_type=CompositionType.PROPERTY_SHOWCASE,
                 width=1080,
                 height=1350,
-                headline="OTOMASI DISTRIBUSI LEADS PROPERTI LANGSUNG KE SALES",
-                highlight_words=["OTOMASI DISTRIBUSI LEADS"],
-                subheadline="Sistem routing cerdas mencegah leads terabaikan dan meningkatkan closing tim sales.",
-                badge_text="SOLUSI SISTEM",
-                cta_text="Lihat Demo Sistem →"
+                headline="RUKOST PREMIUM DEKAT KAMPUS UNPAD JATINANGOR",
+                highlight_words=["RUKOST PREMIUM", "UNPAD JATINANGOR"],
+                property_location="Jatinangor, Sumedang",
+                property_price="Mulai Rp 1,85 Miliar",
+                property_features=["16 Kamar Kost", "Yield 12%/thn", "SHM Siap", "Full Furnished"],
+                badge_text="PORTFOLIO UNIT",
+                cta_strategy=CTAStrategy.CTA_OPTIONAL,
+                cta_text="Jadwalkan Survey →"
             )
         },
+        # 6. Property Opinion & Perspective (MINIMAL_EDITORIAL, CTA_NONE)
         {
-            "template_id": "06_CALL_TO_ACTION",
-            "filename": "sample_06_call_to_action_1080x1350.png",
+            "filename": "sample_06_property_opinion_minimal_1080x1350.png",
             "spec": DesignSpecification(
-                template_id="06_CALL_TO_ACTION",
+                composition_type=CompositionType.MINIMAL_EDITORIAL,
                 width=1080,
                 height=1350,
-                headline="KONSULTASI AUDIT SISTEM MARKETING PROPERTI ANDA",
-                highlight_words=["AUDIT SISTEM MARKETING"],
-                subheadline="Dapatkan roadmap perbaikan funnel iklan properti dalam sesi 45 menit bersama tim kami.",
-                badge_text="SLOT TERBATAS",
-                cta_text="HUBUNGI VIA WHATSAPP ➔"
+                headline="DEVELOPER YANG MENOLAK OTOMASI MARKETING AKAN TERGANTIKAN OLEH YANG MEMANFAATKANNYA",
+                highlight_words=["OTOMASI MARKETING"],
+                subheadline="Pasar properti generasi baru membutuhkan respons instan, transparansi data, dan pengalaman digital yang mulus sejak detik pertama.",
+                author_name="Tim Riset NugiProperti",
+                badge_text="PERSPEKTIF",
+                cta_strategy=CTAStrategy.CTA_NONE
             )
         }
     ]
 
     print("==================================================")
-    print("  RENDERING 6 SAMPLE DESIGNS (1080x1350)")
+    print("  RENDERING 6 EDITORIAL VISUAL SAMPLES (1080x1350)")
     print("==================================================")
 
     for item in samples:
         spec = item["spec"]
-        png_bytes, meta = renderer.render_spec(spec)
+        png_bytes, meta = renderer.render(spec)
         out_path = output_dir / item["filename"]
         with open(out_path, "wb") as f:
             f.write(png_bytes)
 
         qa = VisualQAService.evaluate_design(spec, meta)
-        
+
         # Verify image properties with Pillow
         img = Image.open(io.BytesIO(png_bytes))
-        print(f"[OK] [{spec.template_id}] -> {item['filename']}")
-        print(f"     Size: {img.size} (Expected 1080x1350) | Latency: {meta['render_latency_ms']}ms | QA Score: {qa.score}/100 ({qa.readability})")
+        print(f"[OK] [{spec.composition_type.value}] -> {item['filename']}")
+        print(f"     Size: {img.size} (1080x1350) | CTA: {spec.cta_strategy.value} | Latency: {meta['render_latency_ms']}ms | QA Score: {qa.score}/100 ({qa.readability})")
         assert img.size == (1080, 1350)
         assert qa.score >= 85
 
-    print("\n[SUCCESS] All 6 sample designs rendered and verified successfully!")
+    print("\n[SUCCESS] All 6 Phase 3A Editorial samples rendered and verified successfully!")
+
 
 if __name__ == "__main__":
     run_sample_renders()

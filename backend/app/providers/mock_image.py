@@ -1,14 +1,14 @@
 import io
 import time
 from typing import Optional
-from PIL import Image, ImageDraw
+from PIL import Image, ImageDraw, ImageFilter
 from app.providers.base import ImageProvider, ImageGenerationOutput
 
 
 class MockImageProvider(ImageProvider):
     """
-    Deterministic Mock Image provider creating aesthetic visual background canvases
-    via Pillow without external network or GPU overhead.
+    Deterministic Mock Image provider generating aesthetic cinematic architectural
+    visual canvases via Pillow without external network or GPU overhead.
     """
     @property
     def provider_name(self) -> str:
@@ -18,52 +18,77 @@ class MockImageProvider(ImageProvider):
         self,
         prompt: str,
         width: int = 1080,
-        height: int = 1080,
+        height: int = 1350,
         style_preset: Optional[str] = None
     ) -> ImageGenerationOutput:
         start_time = time.time()
 
-        # Create base canvas with deep obsidian/navy background
-        img = Image.new("RGB", (width, height), color=(10, 16, 26))
+        # 1. Base dark obsidian canvas
+        img = Image.new("RGBA", (width, height), color=(7, 11, 20, 255))
         draw = ImageDraw.Draw(img)
 
-        # Generate smooth modern gradient overlay
+        # 2. Rich atmospheric sky gradient (deep navy to twilight indigo/amber)
         for y in range(height):
-            # Gradient transition from deep slate to deep blue
-            r = int(10 + (y / height) * 15)
-            g = int(16 + (y / height) * 25)
-            b = int(26 + (y / height) * 45)
-            draw.line([(0, y), (width, y)], fill=(r, g, b))
+            ratio = y / height
+            r = int(7 + ratio * 18)
+            g = int(11 + ratio * 24)
+            b = int(20 + ratio * 42)
+            draw.line([(0, y), (width, y)], fill=(r, g, b, 255))
 
-        # Add subtle architectural grid accents (deterministic geometric lines)
-        accent_color = (30, 45, 70)
-        grid_step = width // 10
-        for x in range(0, width, grid_step):
-            draw.line([(x, 0), (x, height)], fill=accent_color, width=1)
-        for y in range(0, height, grid_step):
-            draw.line([(0, y), (width, y)], fill=accent_color, width=1)
+        # 3. Modern Architectural Silhouettes & Facade Grid (Top/Center portion)
+        # Building blocks with warm illuminated window textures
+        arch_layer = Image.new("RGBA", (width, height), (0, 0, 0, 0))
+        arch_draw = ImageDraw.Draw(arch_layer)
 
-        # Add modern soft lighting sphere in top corner
-        glow_center = (int(width * 0.75), int(height * 0.25))
-        glow_radius = int(width * 0.35)
-        # Inner subtle aura
-        draw.ellipse(
-            [
-                (glow_center[0] - glow_radius, glow_center[1] - glow_radius),
-                (glow_center[0] + glow_radius, glow_center[1] + glow_radius)
-            ],
-            fill=(24, 40, 68),
-            outline=(45, 75, 120),
-            width=1
+        # Building 1 (Left background tower)
+        b1_box = [int(width * 0.08), int(height * 0.15), int(width * 0.42), int(height * 0.72)]
+        arch_draw.rectangle(b1_box, fill=(16, 24, 40, 240), outline=(40, 60, 90, 180), width=2)
+        
+        # Illuminated glass window grid in Building 1
+        for wy in range(b1_box[1] + 30, b1_box[3] - 40, 45):
+            for wx in range(b1_box[0] + 25, b1_box[2] - 25, 35):
+                arch_draw.rectangle([wx, wy, wx + 18, wy + 24], fill=(245, 158, 11, 140)) # Warm amber window
+
+        # Building 2 (Right hero tower with glass facade)
+        b2_box = [int(width * 0.45), int(height * 0.08), int(width * 0.92), int(height * 0.75)]
+        arch_draw.rectangle(b2_box, fill=(22, 34, 56, 250), outline=(56, 189, 248, 160), width=2)
+
+        for wy in range(b2_box[1] + 35, b2_box[3] - 40, 40):
+            for wx in range(b2_box[0] + 30, b2_box[2] - 30, 42):
+                arch_draw.rectangle([wx, wy, wx + 26, wy + 20], fill=(56, 189, 248, 120)) # Sky cyan glass light
+
+        # 4. Cinematic Golden Hour Radial Lighting (Warm Sunset Accent)
+        sun_layer = Image.new("RGBA", (width, height), (0, 0, 0, 0))
+        sun_draw = ImageDraw.Draw(sun_layer)
+        sun_center = (int(width * 0.5), int(height * 0.35))
+        sun_radius = int(width * 0.4)
+        sun_draw.ellipse(
+            [sun_center[0] - sun_radius, sun_center[1] - sun_radius, sun_center[0] + sun_radius, sun_center[1] + sun_radius],
+            fill=(245, 158, 11, 60)
         )
+        sun_layer = sun_layer.filter(ImageFilter.GaussianBlur(radius=60))
 
-        # Export to PNG bytes in memory
+        # 5. Composite Layers
+        composite = Image.alpha_composite(img, sun_layer)
+        composite = Image.alpha_composite(composite, arch_layer)
+
+        # 6. Directional Bottom Scrim / Negative Space Gradient (Darkens bottom 50% for high contrast text)
+        dark_scrim = Image.new("RGBA", (width, height), (0, 0, 0, 0))
+        scrim_draw = ImageDraw.Draw(dark_scrim)
+        start_scrim_y = int(height * 0.35)
+        for y in range(start_scrim_y, height):
+            alpha = int(((y - start_scrim_y) / (height - start_scrim_y)) ** 1.5 * 245)
+            scrim_draw.line([(0, y), (width, y)], fill=(7, 11, 20, alpha))
+
+        final_composite = Image.alpha_composite(composite, dark_scrim)
+
+        # Export to PNG bytes
         buffer = io.BytesIO()
-        img.save(buffer, format="PNG", optimize=True)
+        final_rgb = final_composite.convert("RGB")
+        final_rgb.save(buffer, format="PNG", optimize=True)
         img_bytes = buffer.getvalue()
 
         latency_ms = int((time.time() - start_time) * 1000)
-
         return ImageGenerationOutput(
             image_bytes=img_bytes,
             format="PNG",

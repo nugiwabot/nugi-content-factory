@@ -26,9 +26,12 @@ class ProviderFactory:
         p_type = (provider_type or settings.IMAGE_PROVIDER).lower()
         if p_type == "mock":
             return MockImageProvider()
+        elif p_type == "flux":
+            from app.providers.flux_image import FluxImageProvider
+            return FluxImageProvider()
         raise ProviderError(
             provider=p_type,
-            message=f"Image Provider '{p_type}' is not configured for Phase 1. Use 'mock'."
+            message=f"Image Provider '{p_type}' is not configured. Supported: 'mock', 'flux'."
         )
 
     @staticmethod

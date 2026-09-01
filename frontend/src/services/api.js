@@ -24,7 +24,11 @@ export const api = {
   // Brand DNA
   getBrandDna: () => apiClient.get('/brand/nugi-properti'),
 
-  // Templates & Design Brain
+  // Phase 3A Editorial Visual Engine
+  getEditorialCompositions: () => apiClient.get('/editorial/compositions'),
+  renderEditorial: (data) => apiClient.post('/editorial/render', data),
+
+  // Phase 2 Templates & Design Brain
   getTemplates: () => apiClient.get('/templates'),
   getTemplate: (id) => apiClient.get(`/templates/${id}`),
   renderTemplate: (data) => apiClient.post('/templates/render', data),

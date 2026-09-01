@@ -48,10 +48,12 @@ class Settings(BaseSettings):
     LLM_PROVIDER: str = Field(default="mock", description="Active LLM provider: mock, openai, anthropic")
     IMAGE_PROVIDER: str = Field(default="mock", description="Active Image provider: mock, flux")
 
-    # API Keys (Loaded safely, never hardcoded)
+    # API Keys & Endpoints (Loaded safely, never hardcoded)
     OPENAI_API_KEY: Optional[str] = Field(default=None, description="OpenAI API Key for live LLM")
     ANTHROPIC_API_KEY: Optional[str] = Field(default=None, description="Anthropic API Key for live LLM")
     FLUX_API_KEY: Optional[str] = Field(default=None, description="Flux / BFL API Key for image generation")
+    FLUX_MODEL: str = Field(default="flux-1.1-pro", description="Flux model identifier: flux-1.1-pro, flux-dev, flux-schnell")
+    FLUX_BASE_URL: str = Field(default="https://api.bfl.ml/v1", description="Flux API Gateway Base URL")
 
     # Rendering Engine Parameters
     DEFAULT_IMAGE_WIDTH: int = Field(default=1080, description="Default canvas width in pixels")
