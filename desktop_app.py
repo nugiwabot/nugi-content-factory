@@ -7,9 +7,33 @@ import webbrowser
 import multiprocessing
 from pathlib import Path
 
+# Provide safe stream wrappers if launched without console (pythonw / PyInstaller windowed)
+class SafeStream:
+    def write(self, text):
+        pass
+    def flush(self):
+        pass
+    def isatty(self):
+        return False
+
+if sys.stdout is None:
+    sys.stdout = SafeStream()
+if sys.stderr is None:
+    sys.stderr = SafeStream()
+
 # Add backend directory to sys.path
 root_dir = Path(__file__).resolve().parent
-backend_dir = root_dir / "backend"
+if getattr(sys, "frozen", False):
+    app_dir = Path(sys.executable).resolve().parent
+    try:
+        os.chdir(app_dir)
+    except Exception:
+        pass
+    backend_dir = app_dir / "backend"
+else:
+    app_dir = root_dir
+    backend_dir = root_dir / "backend"
+
 if str(backend_dir) not in sys.path:
     sys.path.insert(0, str(backend_dir))
 if str(root_dir) not in sys.path:
@@ -38,7 +62,7 @@ def find_free_port(start_port: int = 8000, max_attempts: int = 50) -> int:
     return start_port
 
 
-def wait_for_server(url: str, timeout_s: float = 15.0) -> bool:
+def wait_for_server(url: str, timeout_s: float = 20.0) -> bool:
     """Polls until the FastAPI server responds or timeout expires."""
     start_t = time.time()
     health_url = f"{url}/api/v1/health"
@@ -51,7 +75,7 @@ def wait_for_server(url: str, timeout_s: float = 15.0) -> bool:
                     return True
         except Exception:
             pass
-        time.sleep(0.25)
+        time.sleep(0.3)
     return False
 
 
@@ -66,7 +90,7 @@ def run_server(host: str, port: int):
             app=fastapi_app,
             host=host,
             port=port,
-            log_level="info",
+            log_config=None,  # Prevent uvicorn from crashing on None sys.stderr in GUI mode
             access_log=False,
             loop="asyncio"
         )
@@ -95,10 +119,10 @@ def main():
     server_thread.start()
 
     # Wait for server readiness before launching webview
-    ready = wait_for_server(server_url, timeout_s=15.0)
+    ready = wait_for_server(server_url, timeout_s=20.0)
     if not ready:
         logger.warning("Server readiness check timed out! Retrying health check once more...")
-        time.sleep(1.0)
+        time.sleep(2.0)
 
     # Try PyWebView Native Window with Edge WebView2
     opened_window = False

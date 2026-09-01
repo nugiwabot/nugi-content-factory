@@ -8,6 +8,7 @@ def setup_logging() -> logging.Logger:
     """
     Configures structured standard logging for the application.
     Masks secrets and provides clear component attribution.
+    Handles GUI / Frozen environments where sys.stdout / sys.stderr may be None.
     """
     log_level = logging.DEBUG if settings.DEBUG else logging.INFO
 
@@ -17,11 +18,6 @@ def setup_logging() -> logging.Logger:
         datefmt="%Y-%m-%d %H:%M:%S"
     )
 
-    # Console Handler
-    handler = logging.StreamHandler(sys.stdout)
-    handler.setFormatter(formatter)
-    handler.setLevel(log_level)
-
     # Root Logger
     root_logger = logging.getLogger()
     root_logger.setLevel(log_level)
@@ -30,7 +26,25 @@ def setup_logging() -> logging.Logger:
     for existing_handler in root_logger.handlers[:]:
         root_logger.removeHandler(existing_handler)
 
-    root_logger.addHandler(handler)
+    # 1. File Handler (Always reliable in production desktop)
+    try:
+        log_file = settings.logs_dir / "app.log"
+        file_handler = logging.FileHandler(log_file, encoding="utf-8")
+        file_handler.setFormatter(formatter)
+        file_handler.setLevel(log_level)
+        root_logger.addHandler(file_handler)
+    except Exception:
+        pass
+
+    # 2. Console Handler (Only if sys.stdout is available)
+    if sys.stdout is not None:
+        try:
+            console_handler = logging.StreamHandler(sys.stdout)
+            console_handler.setFormatter(formatter)
+            console_handler.setLevel(log_level)
+            root_logger.addHandler(console_handler)
+        except Exception:
+            pass
 
     # Suppress verbose 3rd party logs
     logging.getLogger("uvicorn.access").setLevel(logging.WARNING)
