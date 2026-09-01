@@ -20,9 +20,17 @@ class OpenRouterLLMProvider(LLMProvider):
         base_url: Optional[str] = None,
         model: Optional[str] = None
     ):
-        self.api_key = (api_key or settings.OPENROUTER_API_KEY or "").strip()
+        self.api_key = (api_key if api_key is not None else settings.OPENROUTER_API_KEY or "").strip()
         self.base_url = (base_url or settings.OPENROUTER_BASE_URL or "https://openrouter.ai/api/v1").rstrip("/")
-        self.model = model or settings.OPENROUTER_MODEL or "google/gemini-2.5-flash-lite"
+        raw_model = (model or settings.OPENROUTER_MODEL or "google/gemini-2.5-flash-lite").strip()
+        if "/" not in raw_model:
+            if raw_model.startswith("gemini"):
+                raw_model = f"google/{raw_model}"
+            elif raw_model.startswith("gpt"):
+                raw_model = f"openai/{raw_model}"
+            elif raw_model.startswith("claude"):
+                raw_model = f"anthropic/{raw_model}"
+        self.model = raw_model
         self._fallback_provider = MockLLMProvider()
 
     @property

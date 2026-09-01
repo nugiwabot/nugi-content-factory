@@ -140,3 +140,23 @@ class ContentPackage(BaseModel):
     visual_qa: Optional[VisualQAResult] = None
 
     model_config = ConfigDict(from_attributes=True)
+
+
+class QuickSuggestion(BaseModel):
+    label: str
+    prompt: str
+
+
+class AgentChatRequest(BaseModel):
+    message: str = Field(..., description="User chat message or prompt")
+    history: Optional[List[Dict[str, str]]] = Field(default_factory=list, description="Chat message history")
+    project_id: Optional[str] = None
+    active_package: Optional[ContentPackage] = None
+
+
+class AgentChatResponse(BaseModel):
+    reply: str
+    action_type: str = Field(..., description="'CHAT' | 'GENERATE' | 'REVISE_HEADLINE' | 'REVISE_VISUAL' | 'REVISE_CAPTION'")
+    content_package: Optional[ContentPackage] = None
+    quick_suggestions: Optional[List[QuickSuggestion]] = None
+

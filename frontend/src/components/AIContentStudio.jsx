@@ -20,7 +20,8 @@ import {
   Loader2,
   AlertCircle,
   Eye,
-  Sliders
+  Sliders,
+  MessageSquareQuote
 } from 'lucide-react';
 import { api } from '../services/api';
 
@@ -29,9 +30,15 @@ export default function AIContentStudio({ currentProject }) {
     {
       id: 'welcome',
       role: 'agent',
-      content: 'Halo Mas Nugi! Saya **Nugi AI Content Copilot**. Cukup ketik instruksi konten properti apa saja yang ingin dibuat (misalnya edukasi investasi, tips follow-up, perbandingan SHM vs Girik, studi kasus rukost mahasiswa, dll.), dan saya akan otomatis menganalisis audiens, merancang headline hook, mengarahkan visual, hingga merender poster 1080x1350 siap posting!',
+      content: 'Halo Mas Nugi! Saya **Nugi AI Content Copilot**.\n\nSaya siap membantu Anda mendiskusikan strategi konten properti atau langsung membuat poster 1080x1350 siap posting (edukasi investasi, tips follow-up, studi kasus rukost, perbandingan SHM vs Girik, dll.).\n\nAda yang ingin Anda diskusikan atau langsung dibuatkan konten hari ini?',
       timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-      status: 'completed'
+      status: 'completed',
+      suggestions: [
+        { label: 'Leads Boncos Closing Nol', prompt: 'Kenapa leads iklan properti banyak tapi closing tetap rendah?' },
+        { label: 'Edukasi SHM vs Girik', prompt: 'Edukasi bahaya membeli tanah tanpa sertifikat SHM untuk investor pemula' },
+        { label: '3 Kesalahan Follow-Up', prompt: '3 kesalahan follow-up yang membuat calon pembeli properti hilang tanpa kabar' },
+        { label: 'Cash Flow vs Capital Gain', prompt: 'Investasi properti: Lebih menguntungkan cash flow rukost atau capital gain tanah kosong?' }
+      ]
     }
   ]);
 
@@ -39,7 +46,8 @@ export default function AIContentStudio({ currentProject }) {
   const [isGenerating, setIsGenerating] = useState(false);
   const [copiedId, setCopiedId] = useState(null);
   const [showSafezoneOverlay, setShowSafezoneOverlay] = useState(false);
-  const [activeActionLoading, setActiveActionLoading] = useState(null); // 'headline' | 'caption' | 'visual'
+  const [activeActionLoading, setActiveActionLoading] = useState(null);
+  const [activePackage, setActivePackage] = useState(null);
 
   const messagesEndRef = useRef(null);
   const textareaRef = useRef(null);
@@ -72,19 +80,19 @@ export default function AIContentStudio({ currentProject }) {
       timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
     };
 
-    // 2. Append Pending Agent Message
+    // 2. Append Thinking Agent Message
     const agentPendingMsg = {
       id: agentMsgId,
       role: 'agent',
-      content: 'Sedang merancang paket konten editorial properti...',
+      content: 'Sedang menganalisis pesan & strategi konten...',
       timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
       status: 'generating',
       activeStep: 0,
       steps: [
-        { id: 1, label: 'Menganalisis Target Audiens & Market Friction...', status: 'in_progress' },
-        { id: 2, label: 'Merumuskan Headline Hook & Copywriting Konversi...', status: 'pending' },
-        { id: 3, label: 'Directing 3D Architectural Visual & Lighting...', status: 'pending' },
-        { id: 4, label: '13-Layer Typography Compositing & Safezone QA...', status: 'pending' }
+        { id: 1, label: 'Menganalisis Maksud & Konteks Pesan...', status: 'in_progress' },
+        { id: 2, label: 'Menyusun Respon / Strategi Konten...', status: 'pending' },
+        { id: 3, label: 'Directing Art Direction & Visual Concept...', status: 'pending' },
+        { id: 4, label: 'Compositing 13-Layer Typography & Safezone...', status: 'pending' }
       ]
     };
 
@@ -92,7 +100,7 @@ export default function AIContentStudio({ currentProject }) {
     setInputPrompt('');
     setIsGenerating(true);
 
-    // Progressive step simulation for UX while backend generates
+    // UX step stepper
     const stepInterval = setInterval(() => {
       setMessages(prev => prev.map(m => {
         if (m.id === agentMsgId && m.status === 'generating') {
@@ -105,27 +113,40 @@ export default function AIContentStudio({ currentProject }) {
         }
         return m;
       }));
-    }, 900);
+    }, 700);
 
     try {
+      // Build conversation history
+      const historyList = messages
+        .filter(m => m.status === 'completed')
+        .map(m => ({ role: m.role === 'user' ? 'user' : 'assistant', content: m.content }));
+
       const payload = {
-        topic: textToSend,
-        project_id: currentProject?.id || null
+        message: textToSend,
+        history: historyList,
+        project_id: currentProject?.id || null,
+        active_package: activePackage
       };
 
-      const result = await api.generateAIContent(payload);
+      const result = await api.chatWithAgent(payload);
       clearInterval(stepInterval);
 
-      // Finalize Agent Message with complete result package
+      if (result.content_package) {
+        setActivePackage(result.content_package);
+      }
+
+      // Update Agent Message
       setMessages(prev => prev.map(m => {
         if (m.id === agentMsgId) {
           const completedSteps = m.steps.map(s => ({ ...s, status: 'completed' }));
           return {
             ...m,
             status: 'completed',
-            content: `Saya telah merancang konten editorial bertema: **"${result.editorial_spec?.headline}"** dengan compositing 13-layer presisi dan validasi Instagram Safezone 100%.`,
-            resultPackage: result,
-            steps: completedSteps
+            content: result.reply,
+            actionType: result.action_type,
+            resultPackage: result.content_package || null,
+            suggestions: result.quick_suggestions || null,
+            steps: result.action_type === 'GENERATE' ? completedSteps : null
           };
         }
         return m;
@@ -137,7 +158,7 @@ export default function AIContentStudio({ currentProject }) {
           return {
             ...m,
             status: 'error',
-            error: err.message || 'Gagal memproses prompt konten.'
+            error: err.message || 'Gagal memproses pesan.'
           };
         }
         return m;
@@ -166,6 +187,7 @@ export default function AIContentStudio({ currentProject }) {
     setActiveActionLoading(`headline_${msgId}`);
     try {
       const updated = await api.regenerateHeadline({ package: currentPkg });
+      setActivePackage(updated);
       setMessages(prev => prev.map(m => {
         if (m.id === msgId) {
           return { ...m, resultPackage: updated };
@@ -184,6 +206,7 @@ export default function AIContentStudio({ currentProject }) {
     setActiveActionLoading(`visual_${msgId}`);
     try {
       const updated = await api.regenerateVisual({ package: currentPkg });
+      setActivePackage(updated);
       setMessages(prev => prev.map(m => {
         if (m.id === msgId) {
           return { ...m, resultPackage: updated };
@@ -201,17 +224,17 @@ export default function AIContentStudio({ currentProject }) {
     <div className="chat-studio-wrapper">
       {/* Scrollable Chat Feed */}
       <div className="chat-messages-scroll">
-        {/* Top Header Badge */}
+        {/* Top Header Banner */}
         <div className="chat-welcome-banner">
           <div style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', background: 'rgba(168, 85, 247, 0.15)', padding: '6px 16px', borderRadius: '9999px', border: '1px solid rgba(168, 85, 247, 0.3)', marginBottom: '14px' }}>
             <Sparkles size={16} color="#c084fc" />
-            <span style={{ fontSize: '0.8rem', fontWeight: 700, color: '#e9d5ff' }}>NUGIPROPERTI AGENTIC STUDIO</span>
+            <span style={{ fontSize: '0.8rem', fontWeight: 700, color: '#e9d5ff' }}>NUGIPROPERTI AI COPILOT</span>
           </div>
           <h2 style={{ fontSize: '1.45rem', fontWeight: 800, color: '#f8fafc', marginBottom: '8px' }}>
-            AI Content Copilot & Design Factory
+            AI Content Strategist & Design Copilot
           </h2>
           <p style={{ fontSize: '0.88rem', color: 'var(--text-muted)', maxWidth: '600px', margin: '0 auto' }}>
-            Tulis prompt konten properti dalam bahasa sehari-hari. AI Agent otomatis menyusun strategi pasar, headline tajam, visual arsitektur, dan render poster 1080x1350 dalam safezone Instagram.
+            Ajak diskusi atau ketik ide konten properti secara bebas. AI Agent akan membalas obrolan Anda dan otomatis merender poster 1080x1350 presisi safezone Instagram.
           </p>
         </div>
 
@@ -235,15 +258,39 @@ export default function AIContentStudio({ currentProject }) {
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '10px' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                       <span style={{ fontWeight: 700, color: '#c084fc', fontSize: '0.88rem' }}>Nugi Agent</span>
-                      <span className="badge badge-purple" style={{ fontSize: '0.68rem' }}>Editorial Copilot</span>
+                      <span className="badge badge-purple" style={{ fontSize: '0.68rem' }}>Marketing Copilot</span>
                     </div>
                     <span style={{ fontSize: '0.72rem', color: 'var(--text-dim)' }}>{msg.timestamp}</span>
                   </div>
 
                   {/* Message Text */}
-                  <p style={{ whiteSpace: 'pre-line', marginBottom: msg.steps || msg.resultPackage ? '14px' : '0' }}>
+                  <p style={{ whiteSpace: 'pre-line', marginBottom: (msg.steps || msg.resultPackage || msg.suggestions) ? '14px' : '0' }}>
                     {msg.content}
                   </p>
+
+                  {/* Quick Suggestions Inside Bubble */}
+                  {msg.suggestions && msg.suggestions.length > 0 && (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', margin: '12px 0 6px 0' }}>
+                      <div style={{ fontSize: '0.74rem', color: 'var(--text-dim)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                        💡 Rekomendasi Topik Siap Generate:
+                      </div>
+                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
+                        {msg.suggestions.map((sug, sIdx) => (
+                          <button
+                            key={sIdx}
+                            type="button"
+                            className="btn btn-sm btn-secondary"
+                            style={{ fontSize: '0.78rem', padding: '6px 12px', background: 'rgba(168, 85, 247, 0.12)', border: '1px solid rgba(168, 85, 247, 0.3)', color: '#e9d5ff' }}
+                            disabled={isGenerating}
+                            onClick={() => handleSendPrompt(sug.prompt)}
+                          >
+                            <Sparkles size={12} color="#c084fc" />
+                            <span>{sug.label}</span>
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
 
                   {/* Step Reasoning Cards */}
                   {msg.status === 'generating' && msg.steps && (
@@ -280,17 +327,24 @@ export default function AIContentStudio({ currentProject }) {
 
                   {/* Embedded Result Package Card */}
                   {msg.resultPackage && (
-                    <div style={{ background: 'rgba(7, 11, 20, 0.8)', border: '1px solid rgba(168, 85, 247, 0.3)', borderRadius: 'var(--radius-lg)', padding: '18px', marginTop: '14px', boxShadow: '0 8px 24px rgba(0,0,0,0.4)' }}>
+                    <div style={{ background: 'rgba(7, 11, 20, 0.85)', border: '1px solid rgba(168, 85, 247, 0.35)', borderRadius: 'var(--radius-lg)', padding: '18px', marginTop: '14px', boxShadow: '0 8px 24px rgba(0,0,0,0.4)' }}>
                       <div style={{ display: 'grid', gridTemplateColumns: '320px 1fr', gap: '20px', alignItems: 'start' }}>
                         
                         {/* Poster Thumbnail + Overlays */}
                         <div>
-                          <div style={{ position: 'relative', width: '100%', aspectRatio: '1080 / 1350', borderRadius: 'var(--radius-md)', overflow: 'hidden', border: '1px solid var(--border-card)', background: '#070b14' }}>
+                          <div style={{ position: 'relative', width: '100%', aspectRatio: '1080 / 1350', borderRadius: 'var(--radius-md)', overflow: 'hidden', border: '1px solid var(--border-card)', background: '#040711' }}>
                             {msg.resultPackage.rendered_asset_url ? (
                               <img 
                                 src={msg.resultPackage.rendered_asset_url} 
                                 alt="Poster Preview"
                                 style={{ width: '100%', height: '100%', objectFit: 'contain' }}
+                                onError={(e) => {
+                                  // Fallback if URL needs base prefix
+                                  if (!e.target.dataset.tried) {
+                                    e.target.dataset.tried = 'true';
+                                    e.target.src = '/api/v1/assets/download?path=' + (msg.resultPackage.rendered_asset_path || '');
+                                  }
+                                }}
                               />
                             ) : (
                               <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-dim)', fontSize: '0.8rem' }}>
@@ -480,7 +534,7 @@ export default function AIContentStudio({ currentProject }) {
             value={inputPrompt}
             onChange={(e) => setInputPrompt(e.target.value)}
             onKeyDown={handleKeyDown}
-            placeholder="Ketik instruksi konten properti apa saja... (Tekan Enter untuk generate)"
+            placeholder="Ajak diskusi atau minta buat konten... (Tekan Enter untuk kirim)"
             disabled={isGenerating}
           />
 
@@ -499,7 +553,7 @@ export default function AIContentStudio({ currentProject }) {
         </div>
 
         <div style={{ fontSize: '0.72rem', color: 'var(--text-dim)', textAlign: 'center' }}>
-          💡 Tip: Cukup ketik topik atau ide bebas, AI Agent akan mengotomatisasi riset audiens, copywriting, & visual compositing 1080x1350.
+          💬 Tanya strategi pemasaran properti, diskusikan angle ide, atau ketik topik untuk otomatis render poster 1080x1350.
         </div>
       </div>
     </div>

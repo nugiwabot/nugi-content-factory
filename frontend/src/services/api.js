@@ -29,6 +29,7 @@ export const api = {
   getBrandDna: () => apiClient.get('/brand/nugi-properti'),
 
   // Phase 3B AI Content & Art Direction Studio
+  chatWithAgent: (data) => apiClient.post('/ai-studio/chat', data),
   generateAIContent: (data) => apiClient.post('/ai-studio/generate', data),
   regenerateHeadline: (data) => apiClient.post('/ai-studio/regenerate/headline', data),
   regenerateCaption: (data) => apiClient.post('/ai-studio/regenerate/caption', data),

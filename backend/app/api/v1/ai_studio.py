@@ -4,7 +4,12 @@ from sqlalchemy.orm import Session
 from pydantic import BaseModel
 
 from app.database import get_db
-from app.schemas.editorial_agent import UserBriefInput, ContentPackage
+from app.schemas.editorial_agent import (
+    UserBriefInput, 
+    ContentPackage, 
+    AgentChatRequest, 
+    AgentChatResponse
+)
 from app.schemas.design_spec import DesignSpecification, CompositionType
 from app.services.content_generation_agent import ContentGenerationAgent
 from app.rendering.editorial_renderer import EditorialRenderer
@@ -14,6 +19,18 @@ from app.providers.factory import ProviderFactory
 router = APIRouter(prefix="/ai-studio", tags=["AI Content & Art Direction Studio"])
 agent = ContentGenerationAgent()
 renderer = EditorialRenderer()
+
+
+@router.post("/chat", response_model=AgentChatResponse)
+def handle_agentic_chat_endpoint(
+    req: AgentChatRequest,
+    db: Session = Depends(get_db)
+):
+    """
+    Conversational Copilot Endpoint.
+    Analyzes user intent, provides consulting / greetings, or orchestrates end-to-end content generation.
+    """
+    return agent.handle_conversational_chat(req=req, db=db)
 
 
 class RegenerateHeadlineRequest(BaseModel):

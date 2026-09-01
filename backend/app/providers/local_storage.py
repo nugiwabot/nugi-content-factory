@@ -12,7 +12,7 @@ class LocalStorageProvider(StorageProvider):
     Local filesystem storage provider for saving and retrieving rendered assets.
     """
     def __init__(self, base_dir: Optional[str] = None):
-        self.base_path = Path(base_dir or settings.STORAGE_BASE_DIR)
+        self.base_path = Path(base_dir) if base_dir else settings.storage_path
         self.base_path.mkdir(parents=True, exist_ok=True)
 
     def save(self, data: bytes, filename: str, subfolder: str = "") -> str:
