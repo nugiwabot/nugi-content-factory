@@ -19,59 +19,59 @@ def run_sample_renders():
     agent = ContentGenerationAgent()
 
     briefs = [
-        # 1. Problem Scene
+        # 1. Problem Scene (PROPERTY_PROBLEM)
         {
-            "filename": "sample_01_composite_leads_problem_1080x1350.png",
+            "filename": "sample_01_editorial_dna_leads_problem_1080x1350.png",
             "brief": UserBriefInput(
                 topic="Kenapa leads iklan properti banyak tapi closing tetap rendah?",
                 target_audience="Developer & Sales Manager Properti"
             )
         },
-        # 2. Listicle
+        # 2. Numbered Listicle (NUMBER_LIST)
         {
-            "filename": "sample_02_composite_followup_mistakes_1080x1350.png",
+            "filename": "sample_02_editorial_dna_number_list_1080x1350.png",
             "brief": UserBriefInput(
-                topic="3 kesalahan follow-up yang membuat calon pembeli hilang",
+                topic="3 kesalahan fatal follow-up yang membuat calon pembeli properti hilang",
                 target_audience="Tim Sales & Marketing Properti"
             )
         },
-        # 3. Market Insight & Infrastructure
+        # 3. Market Insight (PROPERTY_INSIGHT)
         {
-            "filename": "sample_03_composite_housing_price_trend_1080x1350.png",
+            "filename": "sample_03_editorial_dna_market_insight_1080x1350.png",
             "brief": UserBriefInput(
-                topic="Apakah harga rumah akan terus naik?",
+                topic="Kenapa harga rumah di dekat akses tol bisa naik lebih cepat?",
                 target_audience="Investor & Calon Pembeli Properti"
             )
         },
-        # 4. Education: Location vs Size
+        # 4. Empirical Case Study (CASE_STUDY)
         {
-            "filename": "sample_04_composite_location_vs_size_1080x1350.png",
+            "filename": "sample_04_editorial_dna_case_study_1080x1350.png",
             "brief": UserBriefInput(
-                topic="Kenapa lokasi lebih penting daripada luas bangunan?",
-                target_audience="Pembeli Rumah Pertama & Investor"
-            )
-        },
-        # 5. Case Study: Automated Routing
-        {
-            "filename": "sample_05_composite_auto_leads_routing_1080x1350.png",
-            "brief": UserBriefInput(
-                topic="Bagaimana sistem otomatis membagi leads ke sales?",
+                topic="Studi kasus hasil transformasi response time tim sales properti",
                 target_audience="Principal Agen & Direktur Marketing"
             )
         },
-        # 6. Showcase & Investment Cashflow
+        # 5. Authoritative Opinion Column (OPINION)
         {
-            "filename": "sample_06_composite_cashflow_vs_capital_gain_1080x1350.png",
+            "filename": "sample_05_editorial_dna_opinion_column_1080x1350.png",
             "brief": UserBriefInput(
-                topic="Property investment: cash flow vs capital gain",
-                target_audience="Investor Rukost Mahasiswa"
+                topic="Developer properti yang menolak otomasi pemasaran akan tertinggal",
+                target_audience="Owner & Direktur Developer Properti"
+            )
+        },
+        # 6. Architectural Unit Showcase (PROPERTY_SHOWCASE)
+        {
+            "filename": "sample_06_editorial_dna_rukost_showcase_1080x1350.png",
+            "brief": UserBriefInput(
+                topic="Unit rukost premium dekat kampus UNPAD Jatinangor siap sewa",
+                target_audience="Investor Passive Income"
             )
         }
     ]
 
-    print("==================================================================")
-    print("  RENDERING 6 PHASE 3C COMPOSITE EDITORIAL SAMPLES (1080x1350)")
-    print("==================================================================")
+    print("=======================================================================")
+    print("  RENDERING 6 PHASE 3D-1 EDITORIAL DESIGN DNA SAMPLES (1080x1350)")
+    print("=======================================================================")
 
     for item in briefs:
         brief = item["brief"]
@@ -91,7 +91,7 @@ def run_sample_renders():
         assert img.size == (1080, 1350)
         assert pkg.visual_qa.score >= 85
 
-    print("\n[SUCCESS] All 6 Phase 3C Layered Composite visual samples rendered and verified successfully!")
+    print("\n[SUCCESS] All 6 Phase 3D-1 Editorial Design DNA visual samples rendered and verified successfully!")
 
 
 if __name__ == "__main__":

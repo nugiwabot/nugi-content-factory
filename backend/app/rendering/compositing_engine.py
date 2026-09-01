@@ -14,6 +14,7 @@ from app.schemas.compositing import (
     ColorGradeSpecification,
     VisualConceptSpecification
 )
+from app.schemas.editorial_agent import ContentType
 from app.schemas.design_spec import DesignSpecification, CompositionType, CTAStrategy
 from app.rendering.layout import LayoutEngine
 from app.core.logging import logger
@@ -22,9 +23,9 @@ from app.core.errors import RenderingError
 
 class ProfessionalCompositingEngine:
     """
-    13-Layer Professional AI Visual Compositing Engine for Nugi Content Factory.
+    13-Layer Professional AI Visual Compositing Engine for Nugi Content Factory (Phase 3D-1).
     Executes layered alpha compositing, lighting matching, contact/drop shadows,
-    atmospheric depth, color grading tone mapping, subtle graphic accents, and deterministic typography.
+    atmospheric depth, content-type-specific editorial layouts, and deterministic typography.
     """
     def __init__(self):
         self.colors = NUGI_PROPERTI_BRAND_PROFILE.colors
@@ -61,7 +62,6 @@ class ProfessionalCompositingEngine:
     ) -> Image.Image:
         """Applies advanced blend modes between two RGBA images."""
         if opacity < 1.0:
-            # Scale overlay alpha channel
             r, g, b, a = overlay_img.split()
             a = a.point(lambda p: int(p * opacity))
             overlay_img = Image.merge("RGBA", (r, g, b, a))
@@ -69,7 +69,6 @@ class ProfessionalCompositingEngine:
         if mode == BlendMode.NORMAL:
             return Image.alpha_composite(base_img, overlay_img)
 
-        # Convert to RGB for math operations
         base_rgb = base_img.convert("RGB")
         over_rgb = overlay_img.convert("RGB")
         over_alpha = overlay_img.split()[3]
@@ -87,7 +86,6 @@ class ProfessionalCompositingEngine:
         else:
             return Image.alpha_composite(base_img, overlay_img)
 
-        # Composite blended RGB back onto base using overlay's alpha mask
         blended_rgba = blended_rgb.convert("RGBA")
         blended_rgba.putalpha(over_alpha)
         return Image.alpha_composite(base_img, blended_rgba)
@@ -141,9 +139,6 @@ class ProfessionalCompositingEngine:
             draw_v = ImageDraw.Draw(vignette_layer)
             
             cx, cy = width / 2.0, height / 2.0
-            max_r = math.sqrt(cx**2 + cy**2)
-            
-            # Fast radial vignette approximation via concentric rectangles
             steps = 40
             for i in range(steps):
                 ratio = i / float(steps)
@@ -203,17 +198,17 @@ class ProfessionalCompositingEngine:
     # --------------------------------------------------------------------------
     def composite_full_artwork(
         self,
-        concept: VisualConceptSpecification,
+        concept: Optional[VisualConceptSpecification],
         design_spec: DesignSpecification,
         plan: Optional[CompositionPlan] = None,
         background_bytes: Optional[bytes] = None,
         subject_bytes: Optional[bytes] = None
     ) -> Tuple[bytes, Dict[str, Any]]:
         """
-        Executes the 13-layer compositing stack:
+        Executes the 13-layer compositing stack adhering to NugiProperti Editorial Design DNA:
         L0: Canvas -> L1: Background -> L2: Atmosphere -> L3: Architecture ->
-        L4: Subject -> L5: Supporting -> L6: Foreground Scrim -> L7: Lighting ->
-        L8: Shadows -> L9: Depth -> L10: Graphics -> L11: Typography -> L12: Brand.
+        L4: Subject -> L5: Supporting -> L6: Dynamic Scrim -> L7: Lighting ->
+        L8: Shadows -> L9: Depth/Color Grade -> L10: Graphics -> L11: Typography -> L12: Brand Signature.
         """
         start_time = time.time()
         try:
@@ -222,10 +217,10 @@ class ProfessionalCompositingEngine:
             accent_hex = design_spec.accent_color_hex or self.colors.accent_primary
             accent_rgb = self._hex_to_rgb(accent_hex)
 
-            # LAYER 0: Canvas Base (Obsidian Navy)
+            # LAYER 0: Canvas Base (Obsidian Navy #070B14)
             canvas = Image.new("RGBA", (width, height), (7, 11, 20, 255))
 
-            # LAYER 1: Background Asset
+            # LAYER 1: Background Asset (Photographic 8k Asset)
             if background_bytes and len(background_bytes) > 0:
                 bg_img = Image.open(io.BytesIO(background_bytes)).convert("RGBA")
                 if bg_img.size != (width, height):
@@ -234,68 +229,77 @@ class ProfessionalCompositingEngine:
             else:
                 from app.providers.mock_image import MockImageProvider
                 mock_gen = MockImageProvider()
-                mock_out = mock_gen.generate_background(concept.visual_story, width, height)
+                mock_story = concept.visual_story if concept else design_spec.headline
+                mock_out = mock_gen.generate_background(mock_story, width, height)
                 bg_img = Image.open(io.BytesIO(mock_out.image_bytes)).convert("RGBA")
                 canvas = Image.alpha_composite(canvas, bg_img)
 
-            # LAYER 2: Atmosphere & Haze (Soft ambient twilight depth)
+            # LAYER 2: Atmosphere & Twilight Haze
             atmo_layer = Image.new("RGBA", (width, height), (0, 0, 0, 0))
             draw_atmo = ImageDraw.Draw(atmo_layer)
-            for y in range(int(height * 0.2), int(height * 0.65)):
-                alpha = int(((y - height * 0.2) / (height * 0.45)) * 40)
+            for y in range(int(height * 0.18), int(height * 0.65)):
+                alpha = int(((y - height * 0.18) / (height * 0.47)) * 45)
                 draw_atmo.line([(0, y), (width, y)], fill=(15, 23, 42, alpha))
             canvas = Image.alpha_composite(canvas, atmo_layer)
 
-            # LAYER 3 & 4 & 5: Architecture / Main Subject / Supporting Objects
-            # If explicit subject bytes are provided, composite with alpha masking
-            subject_box = (int(width * 0.45), int(height * 0.12), int(width * 0.95), int(height * 0.75))
+            # LAYER 3 & 4 & 5: Architectural Scene & Main Subject Isolation
+            subject_box = (int(width * 0.45), int(height * 0.10), int(width * 0.95), int(height * 0.72))
             if subject_bytes and len(subject_bytes) > 0:
                 subj_img = Image.open(io.BytesIO(subject_bytes)).convert("RGBA")
                 canvas.paste(subj_img, (subject_box[0], subject_box[1]), subj_img)
             
-            # LAYER 7 & 8: Lighting Match & Realistic Shadows
+            # LAYER 7 & 8: Lighting Match & Contact Shadows
             canvas = self.apply_lighting_and_shadows(canvas, subject_box, accent_rgb)
 
-            # LAYER 6: Foreground Scrim & Negative Space Gradient (Protects Typography Contrast)
+            # LAYER 6: Dynamic Asymmetric Scrim Gradient (60:40 Editorial Ratio)
             scrim_layer = Image.new("RGBA", (width, height), (0, 0, 0, 0))
             draw_scrim = ImageDraw.Draw(scrim_layer)
             scrim_start_y = int(height * 0.38) # Darkens bottom 62% for headline legibility
             for y in range(scrim_start_y, height):
                 progress = (y - scrim_start_y) / (height - scrim_start_y)
-                alpha = int((progress ** 1.35) * 250)
-                draw_scrim.line([(0, y), (width, y)], fill=(7, 11, 20, min(alpha, 253)))
+                alpha = int((progress ** 1.35) * 252)
+                draw_scrim.line([(0, y), (width, y)], fill=(7, 11, 20, min(alpha, 254)))
             canvas = Image.alpha_composite(canvas, scrim_layer)
 
-            # LAYER 9: Depth of Field & Color Grading Tone Mapping
+            # LAYER 9: Depth & Color Grading Tone Mapping
             grade = plan.color_grade if plan else ColorGradeSpecification(
                 preset_name=concept.color_mood[:20] if concept else "CINEMATIC_TWILIGHT"
             )
             canvas = self.apply_color_grading(canvas, grade)
 
-            # LAYER 10: Editorial Graphic Design Accents (Subtle dividers & category pills)
+            # LAYER 10: Editorial Graphic Design Accents
             draw = ImageDraw.Draw(canvas)
             pad_x = int(width * 0.075) # 80px safe margin
-            curr_y = int(height * 0.45)
+            curr_y = int(height * 0.44)
 
-            # Category Eyebrow Pill
+            # Check content archetype specifics
+            is_opinion = "OPINION" in str(design_spec.badge_text).upper() or (concept and concept.content_type in (ContentType.PROPERTY_OPINION, ContentType.OPINION))
+            
+            # Category Eyebrow Badge
             badge_text = (design_spec.badge_text or "EDUKASI PROPERTI").upper().strip()
             badge_font = self._load_font(22, bold=True)
             draw.text((pad_x, curr_y), f"✦ {badge_text}", fill=accent_rgb, font=badge_font)
             
-            # Subtle accent hairline next to badge
+            # Subtle precision hairline next to badge
             b_bbox = draw.textbbox((0, 0), f"✦ {badge_text}", font=badge_font)
             badge_w = b_bbox[2] - b_bbox[0]
             draw.line([(pad_x + badge_w + 18, curr_y + 12), (pad_x + badge_w + 120, curr_y + 12)], fill=(accent_rgb[0], accent_rgb[1], accent_rgb[2], 140), width=2)
-            curr_y += 42
+            curr_y += 44
 
-            # LAYER 11: Deterministic Typography (Headline + Word Highlights + Subheadline)
+            # Giant editorial quotation mark for Opinion pieces
+            if is_opinion:
+                quote_font = self._load_font(72, bold=True)
+                draw.text((pad_x, curr_y - 20), "“", fill=(accent_rgb[0], accent_rgb[1], accent_rgb[2], 120), font=quote_font)
+                curr_y += 36
+
+            # LAYER 11: Deterministic Typography (Headline + Word Highlights)
             max_headline_w = width - (pad_x * 2)
             wrapped_headline = LayoutEngine.wrap_text(design_spec.headline, max_chars_per_line=19)
             headline_font, font_size = LayoutEngine.get_fitted_font(
                 wrapped_headline,
                 max_width=max_headline_w,
-                max_height=int(height * 0.30),
-                initial_size=56,
+                max_height=int(height * 0.28),
+                initial_size=54,
                 min_size=32
             )
 
@@ -311,11 +315,11 @@ class ProfessionalCompositingEngine:
                     highlight_color=(accent_rgb[0], accent_rgb[1], accent_rgb[2], 255),
                     with_shadow=True
                 )
-                curr_y += lh + int(font_size * 0.22)
+                curr_y += lh + int(font_size * 0.20)
 
-            curr_y += 18
+            curr_y += 16
 
-            # Supporting Editorial Subheadline
+            # Supporting Subheadline
             if design_spec.subheadline:
                 sub_font = self._load_font(24, bold=False)
                 wrapped_sub = LayoutEngine.wrap_text(design_spec.subheadline, max_chars_per_line=36)
@@ -324,15 +328,41 @@ class ProfessionalCompositingEngine:
                     s_bbox = draw.textbbox((0, 0), s_line, font=sub_font)
                     curr_y += (s_bbox[3] - s_bbox[1]) + 8
 
-            # Listicle Items / Case Study Metrics (if specified)
-            if design_spec.bullet_points and len(design_spec.bullet_points) > 0:
+            # Empirical Metric Pill Callout (Case Study & Data Editorial)
+            if design_spec.metric_value:
+                curr_y += 12
+                m_font = self._load_font(22, bold=True)
+                m_label = design_spec.metric_label or "Pertumbuhan Efisiensi"
+                m_text = f"✦ {design_spec.metric_value}  |  {m_label}"
+                m_bbox = draw.textbbox((0, 0), m_text, font=m_font)
+                m_w = m_bbox[2] - m_bbox[0] + 32
+                m_h = 38
+                draw.rounded_rectangle([pad_x, curr_y, pad_x + m_w, curr_y + m_h], radius=8, fill=(16, 185, 129, 35), outline=(16, 185, 129, 140), width=1)
+                draw.text((pad_x + 16, curr_y + 8), m_text, fill=(16, 185, 129, 255), font=m_font)
+                curr_y += m_h + 12
+
+            # Numbered Index Listicle Items (01, 02, 03)
+            elif design_spec.bullet_points and len(design_spec.bullet_points) > 0:
                 curr_y += 10
                 pt_font = self._load_font(21, bold=False)
+                idx_font = self._load_font(20, bold=True)
                 for i, pt in enumerate(design_spec.bullet_points[:3]):
-                    draw.text((pad_x, curr_y), f"• {pt}", fill=(226, 232, 240, 255), font=pt_font)
-                    curr_y += 30
+                    num_str = f"0{i+1}"
+                    draw.text((pad_x, curr_y), num_str, fill=accent_rgb, font=idx_font)
+                    draw.text((pad_x + 36, curr_y), pt, fill=(226, 232, 240, 255), font=pt_font)
+                    curr_y += 32
 
-            # CTA Button ONLY if CTA_REQUIRED or CTA_OPTIONAL with text
+            # Property Showcase Location & Price Badge
+            elif design_spec.property_location or design_spec.property_price:
+                curr_y += 10
+                spec_font = self._load_font(21, bold=True)
+                loc_text = f"📍 {design_spec.property_location or 'Bandung'}"
+                price_text = f"🏷️ {design_spec.property_price or 'Yield 12%'}"
+                draw.text((pad_x, curr_y), loc_text, fill=(203, 213, 225, 255), font=spec_font)
+                draw.text((pad_x + 280, curr_y), price_text, fill=accent_rgb, font=spec_font)
+                curr_y += 34
+
+            # CTA Button ONLY if CTA_REQUIRED or CTA_OPTIONAL with valid text
             if design_spec.cta_strategy in (CTAStrategy.CTA_REQUIRED, CTAStrategy.CTA_OPTIONAL) and design_spec.cta_text:
                 cta_font = self._load_font(20, bold=True)
                 cta_y = height - 135
@@ -340,7 +370,7 @@ class ProfessionalCompositingEngine:
                 draw.rounded_rectangle(cta_rect, radius=12, fill=accent_rgb)
                 draw.text((pad_x + 22, cta_y + 13), design_spec.cta_text, fill=(7, 11, 20, 255), font=cta_font)
 
-            # LAYER 12: Brand Identity & Signature Footer
+            # LAYER 12: Brand Identity & Signature Watermark Footer
             footer_y = height - 60
             draw.line([(pad_x, footer_y - 12), (width - pad_x, footer_y - 12)], fill=(255, 255, 255, 30), width=1)
             footer_font = self._load_font(18, bold=True)
@@ -355,7 +385,7 @@ class ProfessionalCompositingEngine:
 
             latency_ms = int((time.time() - start_time) * 1000)
             render_metadata = {
-                "engine": "ProfessionalCompositingEngine_v3C",
+                "engine": "ProfessionalCompositingEngine_v3D",
                 "layers_count": 13,
                 "color_grade_preset": grade.preset_name,
                 "width": width,

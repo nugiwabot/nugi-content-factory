@@ -98,7 +98,7 @@ def test_13_layer_compositing_engine():
         plan=plan
     )
     assert rendered_bytes is not None
-    assert meta["engine"] == "ProfessionalCompositingEngine_v3C"
+    assert "ProfessionalCompositingEngine" in meta["engine"]
     assert meta["layers_count"] == 13
     assert meta["width"] == 1080
     assert meta["height"] == 1350

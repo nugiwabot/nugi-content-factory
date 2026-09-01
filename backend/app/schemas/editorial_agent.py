@@ -7,15 +7,21 @@ from app.schemas.visual_qa import VisualQAResult
 
 
 class ContentType(str, Enum):
-    """Controlled Content Types for Property / Real Estate Domain."""
+    """Controlled Content Types for Property / Real Estate Domain (Phase 3D-1)."""
     PROPERTY_EDUCATION = "PROPERTY_EDUCATION"    # Educational article explaining concepts/mechanisms
     PROPERTY_PROBLEM = "PROPERTY_PROBLEM"        # Dilemma or friction experienced by developers/sales
     PROPERTY_INSIGHT = "PROPERTY_INSIGHT"        # Market data and high-level strategic perspective
     PROPERTY_LISTICLE = "PROPERTY_LISTICLE"      # Numbered actionable points or fatal mistakes
+    NUMBER_LIST = "NUMBER_LIST"                  # Numbered actionable points alias
     PROPERTY_CASE_STUDY = "PROPERTY_CASE_STUDY"  # Real proof and transformation results
+    CASE_STUDY = "CASE_STUDY"                    # Case study alias
+    DATA_EDITORIAL = "DATA_EDITORIAL"            # Institutional data & yield analysis
     PROPERTY_OPINION = "PROPERTY_OPINION"        # Industry commentary, stance, or quote
+    OPINION = "OPINION"                          # Opinion alias
     PROPERTY_SHOWCASE = "PROPERTY_SHOWCASE"      # Unit/architectural highlight (Rukost, villa, house)
+    SOFT_SELLING = "SOFT_SELLING"                # Aspirational lifestyle narrative
     PROPERTY_SALES_OFFER = "PROPERTY_SALES_OFFER"# Direct conversion offer (Audit, survey, consultation)
+    DIRECT_OFFER = "DIRECT_OFFER"                # Direct offer alias
 
 
 class TextSafeRegion(str, Enum):

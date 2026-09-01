@@ -27,7 +27,7 @@ from app.services.asset_compositor_service import AssetCompositorService
 class CreativeDirectorService:
     """
     Transforms Editorial Content Specifications into precise Visual Concepts,
-    Layered Composition Plans, and multi-variant art directions.
+    Layered Composition Plans, and multi-variant art directions (Phase 3D-1).
     """
     @staticmethod
     def create_visual_concept(spec: EditorialContentSpecification) -> VisualConceptSpecification:
@@ -58,7 +58,7 @@ class CreativeDirectorService:
             accent_hex = colors.accent_primary
             ns_region = TextSafeRegion.FULL_BOTTOM
 
-        elif c_type == ContentType.PROPERTY_LISTICLE:
+        elif c_type in (ContentType.PROPERTY_LISTICLE, ContentType.NUMBER_LIST):
             visual_story = "Struktur poin-poin kesalahan krusial yang harus dihentikan dalam follow-up leads properti."
             focal_subject = "Fasad arsitektur modern bertingkat dengan garis geometris tegas dan rapi"
             background_desc = "Distrik komersial modern dengan pencahayaan senja yang tenang"
@@ -69,7 +69,7 @@ class CreativeDirectorService:
             accent_hex = colors.accent_gold
             ns_region = TextSafeRegion.FULL_BOTTOM
 
-        elif c_type == ContentType.PROPERTY_CASE_STUDY:
+        elif c_type in (ContentType.PROPERTY_CASE_STUDY, ContentType.CASE_STUDY, ContentType.DATA_EDITORIAL):
             visual_story = "Transformasi empiris efisiensi respon pesan leads meningkatkan konversi survey lokasi 300%."
             focal_subject = "Gedung hunian mahasiswa (Rukost) modern yang beroperasi penuh dengan kamar terisi"
             background_desc = "Kawasan kampus universitas terkemuka dengan akses jalan tertata rapi"
@@ -91,7 +91,7 @@ class CreativeDirectorService:
             accent_hex = colors.accent_gold
             ns_region = TextSafeRegion.FULL_BOTTOM
 
-        elif c_type == ContentType.PROPERTY_OPINION:
+        elif c_type in (ContentType.PROPERTY_OPINION, ContentType.OPINION):
             visual_story = "Perspektif tegas mengenai masa depan digitalisasi dan otomasi pemasaran properti."
             focal_subject = "Komposisi arsitektur minimalis modern dengan bayangan diagonal kuat"
             background_desc = "Terrace ruang rapat eksekutif menghadap cakrawala kota"
@@ -102,7 +102,18 @@ class CreativeDirectorService:
             accent_hex = colors.accent_secondary
             ns_region = TextSafeRegion.FULL_BOTTOM
 
-        else: # PROPERTY_EDUCATION & PROPERTY_SALES_OFFER
+        elif c_type == ContentType.SOFT_SELLING:
+            visual_story = "Gaya hidup residensial eksklusif dengan ruang hijau dan fasilitas modern terintegrasi."
+            focal_subject = "Taman tropis tertata di halaman clubhouse perumahan mewah"
+            background_desc = "Deretan fasad rumah modern dua lantai dengan pencahayaan senja"
+            midground_desc = "Lounge santai terbuka dengan lantai kayu dan kolam renang"
+            foreground_desc = "Gradien scrim halus untuk narasi lifestyle yang mengalir"
+            lighting_dir = "Warm sunset golden hour fill"
+            color_mood = "Warm amber, slate navy, dan emerald foliage"
+            accent_hex = colors.accent_primary
+            ns_region = TextSafeRegion.FULL_BOTTOM
+
+        else: # PROPERTY_EDUCATION & DIRECT_OFFER / PROPERTY_SALES_OFFER
             visual_story = "Prinsip fundamental membangun sistem pemasaran properti yang berkelanjutan."
             focal_subject = "Pusat pemasaran properti modern dengan arsitektur kaca terbuka"
             background_desc = "Kawasan residensial terencana dengan taman tropis dan jalan aspal mulus"
@@ -138,11 +149,11 @@ class CreativeDirectorService:
         accent_hex = colors.accent_primary
         if spec.content_type == ContentType.PROPERTY_PROBLEM:
             accent_hex = colors.accent_rose
-        elif spec.content_type in (ContentType.PROPERTY_LISTICLE, ContentType.PROPERTY_SHOWCASE):
+        elif spec.content_type in (ContentType.PROPERTY_LISTICLE, ContentType.NUMBER_LIST, ContentType.PROPERTY_SHOWCASE):
             accent_hex = colors.accent_gold
-        elif spec.content_type == ContentType.PROPERTY_CASE_STUDY:
+        elif spec.content_type in (ContentType.PROPERTY_CASE_STUDY, ContentType.CASE_STUDY, ContentType.DATA_EDITORIAL):
             accent_hex = colors.accent_emerald
-        elif spec.content_type == ContentType.PROPERTY_OPINION:
+        elif spec.content_type in (ContentType.PROPERTY_OPINION, ContentType.OPINION):
             accent_hex = colors.accent_secondary
 
         image_prompt = (
@@ -236,10 +247,16 @@ class CreativeDirectorService:
             ContentType.PROPERTY_PROBLEM: "DILEMA MARKETING PROPERTI",
             ContentType.PROPERTY_INSIGHT: "MARKET INTELLIGENCE",
             ContentType.PROPERTY_LISTICLE: "POIN KRUSIAL",
+            ContentType.NUMBER_LIST: "POIN KRUSIAL",
             ContentType.PROPERTY_CASE_STUDY: "STUDI KASUS & HASIL",
+            ContentType.CASE_STUDY: "STUDI KASUS & HASIL",
+            ContentType.DATA_EDITORIAL: "DATA & ANALISIS PASAR",
             ContentType.PROPERTY_SHOWCASE: "PORTFOLIO UNIT",
             ContentType.PROPERTY_OPINION: "PERSPEKTIF",
+            ContentType.OPINION: "PERSPEKTIF",
+            ContentType.SOFT_SELLING: "PRESTIGE LIVING",
             ContentType.PROPERTY_SALES_OFFER: "SLOT TERBATAS",
+            ContentType.DIRECT_OFFER: "SESI KONSULTASI",
             ContentType.PROPERTY_EDUCATION: "EDUKASI PROPERTI"
         }
         badge_text = badge_text_map.get(editorial_spec.content_type, "EDUKASI PROPERTI")
