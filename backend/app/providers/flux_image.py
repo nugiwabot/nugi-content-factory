@@ -1,5 +1,7 @@
 import time
 import httpx
+import io
+from PIL import Image
 from typing import Optional, Dict, Any
 from app.providers.base import ImageProvider, ImageGenerationOutput
 from app.providers.mock_image import MockImageProvider
@@ -10,10 +12,10 @@ from app.core.errors import ProviderError
 
 class FluxImageProvider(ImageProvider):
     """
-    Flux / Black Forest Labs API Image Provider Adapter.
-    Generates pure visual background assets from VisualPromptSpecification.
-    Supports direct and asynchronous task polling (BFL API standard).
-    Gracefully falls back to MockImageProvider if API credentials fail or are offline.
+    Flux / Black Forest Labs API Image Provider Adapter (Phase 3D-1).
+    Generates high-fidelity visual photographic assets using BFL models (e.g. flux-2-klein-9b).
+    Supports direct asynchronous task polling via polling_url.
+    Gracefully falls back to MockImageProvider if API credentials fail or network is offline.
     """
     def __init__(
         self,
@@ -23,13 +25,15 @@ class FluxImageProvider(ImageProvider):
     ):
         self.api_key = (api_key or settings.FLUX_API_KEY or "").strip()
         
-        # Normalize base URL
-        raw_base = (base_url or settings.FLUX_BASE_URL or "https://api.bfl.ml/v1").rstrip("/")
-        if not raw_base.endswith("/v1") and not raw_base.endswith(".ai") and not raw_base.endswith(".ml"):
+        # Normalize base URL (https://bfl.ai -> https://api.bfl.ai/v1)
+        raw_base = (base_url or settings.FLUX_BASE_URL or "https://api.bfl.ai/v1").rstrip("/")
+        if "bfl.ai" in raw_base and "api." not in raw_base:
+            raw_base = "https://api.bfl.ai/v1"
+        elif not raw_base.endswith("/v1"):
             raw_base = f"{raw_base}/v1"
         self.base_url = raw_base
 
-        self.model = model or settings.FLUX_MODEL or "flux-1.1-pro"
+        self.model = model or settings.FLUX_MODEL or "flux-2-klein-9b"
         self._fallback_provider = MockImageProvider()
 
     @property
@@ -58,26 +62,26 @@ class FluxImageProvider(ImageProvider):
         # 2. Live Flux API invocation
         try:
             headers = {
-                "Authorization": f"Bearer {self.api_key}",
                 "x-key": self.api_key,
+                "Authorization": f"Bearer {self.api_key}",
                 "Content-Type": "application/json"
             }
+            
+            # BFL requires width & height to be multiples of 32 between 256 and 1440
+            req_w = min(1440, max(256, (width // 32) * 32))
+            req_h = min(1440, max(256, (height // 32) * 32))
+
             payload = {
                 "prompt": prompt,
-                "width": width,
-                "height": height,
+                "width": req_w,
+                "height": req_h,
                 "prompt_upsampling": False,
                 "seed": 42
             }
 
-            # Build endpoint URL (handles https://bfl.ai/v1/{model} or https://api.bfl.ml/v1/{model})
-            if "/v1" in self.base_url:
-                endpoint = f"{self.base_url}/{self.model}"
-            else:
-                endpoint = f"{self.base_url}/v1/{self.model}"
+            endpoint = f"{self.base_url}/{self.model}"
+            logger.info(f"Submitting task to Flux API: {endpoint} ({req_w}x{req_h})")
 
-            logger.info(f"Calling Flux API endpoint: {endpoint} with model: {self.model}")
-            
             with httpx.Client(timeout=60.0) as client:
                 resp = client.post(endpoint, json=payload, headers=headers)
                 if resp.status_code not in (200, 201, 202):
@@ -85,14 +89,12 @@ class FluxImageProvider(ImageProvider):
                     return self._fallback_provider.generate_background(prompt, width, height, style_preset)
                 
                 res_data = resp.json()
-
-                # Check if result contains direct sample URL or async task ID
                 image_url = res_data.get("result", {}).get("sample") or res_data.get("sample")
                 task_id = res_data.get("id")
                 polling_url = res_data.get("polling_url")
 
-                # If asynchronous task, poll for result (up to 30 seconds)
-                if not image_url and (task_id or polling_url):
+                # Asynchronous polling pattern (standard in BFL)
+                if not image_url and (polling_url or task_id):
                     poll_endpoint = polling_url or f"{self.base_url}/get_result?id={task_id}"
                     logger.info(f"Polling Flux generation task: {poll_endpoint}")
                     for _ in range(15):
@@ -104,36 +106,39 @@ class FluxImageProvider(ImageProvider):
                             if p_status == "Ready":
                                 image_url = p_data.get("result", {}).get("sample") or p_data.get("sample")
                                 break
-                            elif p_status in ("Error", "Failed"):
-                                logger.warning(f"Flux task failed with status {p_status}: {p_data}")
+                            elif p_status in ("Error", "Failed", "Request Moderated"):
+                                logger.warning(f"Flux task ended with status {p_status}: {p_data}")
                                 break
 
-                if not image_url:
-                    logger.warning("No sample image URL resolved from Flux API response. Falling back to mock.")
-                    return self._fallback_provider.generate_background(prompt, width, height, style_preset)
+                # Download image binary if URL received
+                if image_url:
+                    logger.info(f"Downloading generated Flux asset from: {image_url[:80]}...")
+                    dl_resp = client.get(image_url)
+                    if dl_resp.status_code == 200:
+                        raw_bytes = dl_resp.content
+                        # Resize to exact requested (width, height)
+                        img = Image.open(io.BytesIO(raw_bytes))
+                        if img.size != (width, height):
+                            img = img.resize((width, height), Image.Resampling.LANCZOS)
+                        
+                        out_buf = io.BytesIO()
+                        img.save(out_buf, format="PNG")
+                        final_bytes = out_buf.getvalue()
 
-                # Download image binary
-                img_resp = client.get(image_url)
-                if img_resp.status_code != 200:
-                    logger.warning("Failed to fetch image binary from Flux URL. Falling back to mock.")
-                    return self._fallback_provider.generate_background(prompt, width, height, style_preset)
+                        latency = int((time.time() - start_time) * 1000)
+                        logger.info(f"Flux generation completed successfully in {latency}ms ({len(final_bytes)} bytes)")
+                        return ImageGenerationOutput(
+                            image_bytes=final_bytes,
+                            width=width,
+                            height=height,
+                            latency_ms=latency,
+                            model_used=self.model,
+                            prompt_used=prompt
+                        )
 
-                latency_ms = int((time.time() - start_time) * 1000)
-                logger.info(f"Successfully generated image via Flux API ({len(img_resp.content)} bytes, {latency_ms}ms)")
-                return ImageGenerationOutput(
-                    image_bytes=img_resp.content,
-                    format="PNG",
-                    width=width,
-                    height=height,
-                    prompt_used=prompt,
-                    latency_ms=latency_ms
-                )
+            logger.warning("Flux generation did not return an image. Falling back to mock.")
+            return self._fallback_provider.generate_background(prompt, width, height, style_preset)
 
         except Exception as e:
-            logger.warning(f"Flux API invocation failed: {str(e)}. Falling back gracefully to MockImageProvider.")
-            return self._fallback_provider.generate_background(
-                prompt=prompt,
-                width=width,
-                height=height,
-                style_preset=style_preset
-            )
+            logger.warning(f"Flux generation exception: {str(e)}. Falling back gracefully to Mock.")
+            return self._fallback_provider.generate_background(prompt, width, height, style_preset)
