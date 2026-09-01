@@ -1,5 +1,5 @@
 import uuid
-from typing import Dict, Any, Optional
+from typing import Dict, Any, Optional, List
 from sqlalchemy.orm import Session
 
 from app.schemas.editorial_agent import (
@@ -9,11 +9,18 @@ from app.schemas.editorial_agent import (
     ContentPackage,
     ContentType
 )
+from app.schemas.compositing import (
+    VisualConceptSpecification,
+    CompositionPlan,
+    VisualVariant
+)
 from app.schemas.design_spec import DesignSpecification, CompositionType, CTAStrategy
 from app.services.content_strategy_service import ContentStrategyService
 from app.services.headline_service import HeadlineGenerationService
 from app.services.caption_service import CaptionGenerationService
 from app.services.creative_director_service import CreativeDirectorService
+from app.services.asset_compositor_service import AssetCompositorService
+from app.rendering.compositing_engine import ProfessionalCompositingEngine
 from app.rendering.editorial_renderer import EditorialRenderer
 from app.services.visual_qa import VisualQAService
 from app.providers.factory import ProviderFactory
@@ -26,9 +33,10 @@ from app.core.logging import logger
 class ContentGenerationAgent:
     """
     Master AI Agent orchestrating Content Strategy, Copywriting, Art Direction,
-    Background Generation, Deterministic Pillow Rendering, QA, and Persistence.
+    13-Layer Compositing Engine, Deterministic Typography, Visual QA, and Multi-Variant Generation.
     """
     def __init__(self):
+        self.compositing_engine = ProfessionalCompositingEngine()
         self.editorial_renderer = EditorialRenderer()
 
     def generate_full_package(
@@ -38,8 +46,9 @@ class ContentGenerationAgent:
         image_provider_type: Optional[str] = None
     ) -> ContentPackage:
         """
-        Executes the full pipeline:
-        Brief -> Strategy -> Headline -> Caption -> Art Direction -> Render -> QA -> DB Save.
+        Executes the full layered pipeline:
+        Brief -> Strategy -> Headline -> Caption -> Visual Concept -> Asset Plan ->
+        13-Layer Compositing -> Visual QA -> Multi-Variant Planning -> DB Save.
         """
         logger.info(f"Starting AI Content & Art Direction generation for topic: {brief.topic}")
 
@@ -100,18 +109,20 @@ class ContentGenerationAgent:
             property_features=prop_feat
         )
 
-        # 5. Visual Art Direction & Prompt Building
+        # 5. Visual Concept & Art Direction
+        concept = CreativeDirectorService.create_visual_concept(editorial_spec)
         art_direction = CreativeDirectorService.create_art_direction(editorial_spec)
 
-        # 6. Build Design Specification Contract
+        # 6. Build Design Specification & Composition Plan
         design_spec = CreativeDirectorService.build_design_specification(
             editorial_spec=editorial_spec,
             art_direction=art_direction,
             width=1080,
             height=1350
         )
+        plan = AssetCompositorService.build_composition_plan(concept, design_spec.accent_color_hex or "#38bdf8")
 
-        # 7. Generate Background Image (Flux with Mock Fallback)
+        # 7. Generate Background Asset (Flux with Mock Fallback)
         img_provider = ProviderFactory.get_image_provider(image_provider_type)
         bg_output = img_provider.generate_background(
             prompt=art_direction.image_prompt,
@@ -119,24 +130,33 @@ class ContentGenerationAgent:
             height=design_spec.height
         )
 
-        # 8. Deterministic Typography & Layout Compositing
-        rendered_bytes, meta = self.editorial_renderer.render(
-            spec=design_spec,
+        # 8. 13-Layer Compositing Engine Execution
+        rendered_bytes, meta = self.compositing_engine.composite_full_artwork(
+            concept=concept,
+            design_spec=design_spec,
+            plan=plan,
             background_bytes=bg_output.image_bytes
         )
 
         # 9. Persist Asset to Storage
         storage = ProviderFactory.get_storage_provider()
-        filename = f"content_{editorial_spec.content_type.value.lower()}_{uuid.uuid4().hex[:8]}_1080x1350.png"
+        filename = f"composite_{editorial_spec.content_type.value.lower()}_{uuid.uuid4().hex[:8]}_1080x1350.png"
         asset_path = storage.save(data=rendered_bytes, filename=filename, subfolder="generated")
         asset_url = f"/api/v1/assets/download?path={asset_path}"
 
         # 10. Automated Visual QA
         visual_qa = VisualQAService.evaluate_design(design_spec, meta)
 
+        # 11. Generate Multi-Variants (1-3 Variants)
+        variants = CreativeDirectorService.generate_visual_variants(editorial_spec, design_spec)
+        # Populate first variant with active render
+        variants[0].rendered_asset_path = asset_path
+        variants[0].rendered_asset_url = asset_url
+        variants[0].visual_qa_score = visual_qa.score
+
         content_id = str(uuid.uuid4())
 
-        # 11. Database Persistence (if DB session provided)
+        # 12. Database Persistence
         if db and brief.project_id:
             try:
                 db_content = Content(
@@ -156,7 +176,8 @@ class ContentGenerationAgent:
                         "archetype": art_direction.archetype.value,
                         "cta_policy": editorial_spec.cta_policy.value,
                         "highlight_words": editorial_spec.highlight_words,
-                        "target_audience": editorial_spec.target_audience
+                        "target_audience": editorial_spec.target_audience,
+                        "visual_story": concept.visual_story
                     }
                 )
                 db.add(db_content)
@@ -186,6 +207,9 @@ class ContentGenerationAgent:
             editorial_spec=editorial_spec,
             art_direction_spec=art_direction,
             design_spec=design_spec,
+            concept_spec=concept.model_dump(),
+            variants=[v.model_dump() for v in variants],
+            active_variant=variants[0].variant_name,
             rendered_asset_path=asset_path,
             rendered_asset_url=asset_url,
             visual_qa=visual_qa
@@ -196,7 +220,7 @@ class ContentGenerationAgent:
         current_pkg: ContentPackage,
         custom_topic: Optional[str] = None
     ) -> ContentPackage:
-        """Regenerates only the headline, subheadline, and highlight words without altering caption or visual."""
+        """Regenerates only the headline, subheadline, and highlight words without re-running visual generation."""
         topic = custom_topic or current_pkg.topic
         head_pkg = HeadlineGenerationService.generate_headline_package(
             topic=topic,
@@ -213,10 +237,13 @@ class ContentGenerationAgent:
         current_pkg.design_spec.subheadline = head_pkg["subheadline"]
         current_pkg.design_spec.highlight_words = head_pkg["highlight_words"]
 
-        # Re-render graphic
-        rendered_bytes, meta = self.editorial_renderer.render(current_pkg.design_spec)
+        # Re-render with existing background
+        rendered_bytes, meta = self.compositing_engine.composite_full_artwork(
+            concept=VisualConceptSpecification(**current_pkg.concept_spec) if current_pkg.concept_spec else None,
+            design_spec=current_pkg.design_spec
+        )
         storage = ProviderFactory.get_storage_provider()
-        filename = f"content_rehead_{uuid.uuid4().hex[:8]}_1080x1350.png"
+        filename = f"rehead_{uuid.uuid4().hex[:8]}_1080x1350.png"
         asset_path = storage.save(data=rendered_bytes, filename=filename, subfolder="generated")
         current_pkg.rendered_asset_path = asset_path
         current_pkg.rendered_asset_url = f"/api/v1/assets/download?path={asset_path}"
@@ -250,8 +277,8 @@ class ContentGenerationAgent:
         if archetype_override:
             current_pkg.editorial_spec.suggested_archetype = archetype_override
 
+        new_concept = CreativeDirectorService.create_visual_concept(current_pkg.editorial_spec)
         new_art = CreativeDirectorService.create_art_direction(current_pkg.editorial_spec)
-        current_pkg.art_direction_spec = new_art
 
         new_design_spec = CreativeDirectorService.build_design_specification(
             editorial_spec=current_pkg.editorial_spec,
@@ -259,19 +286,28 @@ class ContentGenerationAgent:
             width=current_pkg.design_spec.width,
             height=current_pkg.design_spec.height
         )
+        new_plan = AssetCompositorService.build_composition_plan(new_concept, new_design_spec.accent_color_hex or "#38bdf8")
+
+        current_pkg.concept_spec = new_concept.model_dump()
+        current_pkg.art_direction_spec = new_art
         current_pkg.design_spec = new_design_spec
 
-        # Generate fresh background and render
+        # Generate fresh background and composite
         img_provider = ProviderFactory.get_image_provider()
         bg_out = img_provider.generate_background(
             prompt=new_art.image_prompt,
             width=new_design_spec.width,
             height=new_design_spec.height
         )
-        rendered_bytes, meta = self.editorial_renderer.render(new_design_spec, bg_out.image_bytes)
+        rendered_bytes, meta = self.compositing_engine.composite_full_artwork(
+            concept=new_concept,
+            design_spec=new_design_spec,
+            plan=new_plan,
+            background_bytes=bg_out.image_bytes
+        )
 
         storage = ProviderFactory.get_storage_provider()
-        filename = f"content_reart_{uuid.uuid4().hex[:8]}_1080x1350.png"
+        filename = f"reart_{uuid.uuid4().hex[:8]}_1080x1350.png"
         asset_path = storage.save(data=rendered_bytes, filename=filename, subfolder="generated")
         current_pkg.rendered_asset_path = asset_path
         current_pkg.rendered_asset_url = f"/api/v1/assets/download?path={asset_path}"

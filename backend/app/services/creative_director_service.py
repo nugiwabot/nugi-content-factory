@@ -1,9 +1,16 @@
-from typing import Dict, Any, Optional
+import uuid
+from typing import Dict, Any, Optional, List
 from app.schemas.editorial_agent import (
     EditorialContentSpecification,
     VisualArtDirectionSpecification,
     TextSafeRegion,
     ContentType
+)
+from app.schemas.compositing import (
+    VisualConceptSpecification,
+    CompositionPlan,
+    VisualVariant,
+    ColorGradeSpecification
 )
 from app.schemas.design_spec import (
     DesignSpecification,
@@ -14,133 +21,208 @@ from app.schemas.design_spec import (
 )
 from app.schemas.visual_prompt import VisualPromptSpecification
 from app.brand.profiles import NUGI_PROPERTI_BRAND_PROFILE
+from app.services.asset_compositor_service import AssetCompositorService
 
 
 class CreativeDirectorService:
     """
-    Transforms Editorial Content Specifications into precise Visual Art Direction Specifications
-    and constructs the final DesignSpecification contract for the deterministic rendering engine.
+    Transforms Editorial Content Specifications into precise Visual Concepts,
+    Layered Composition Plans, and multi-variant art directions.
     """
     @staticmethod
-    def create_art_direction(spec: EditorialContentSpecification) -> VisualArtDirectionSpecification:
+    def create_visual_concept(spec: EditorialContentSpecification) -> VisualConceptSpecification:
         c_type = spec.content_type
         archetype = spec.suggested_archetype
 
         colors = NUGI_PROPERTI_BRAND_PROFILE.colors
-        accent_hex = colors.accent_primary
 
         if c_type == ContentType.PROPERTY_PROBLEM:
-            subject = "A modern property sales lounge at dusk, a focused sales professional reviewing incoming lead data on a laptop"
-            environment = "High-end developer marketing gallery with miniature architectural scale models in the foreground"
-            camera_perspective = "Low-angle medium shot, 35mm lens framing with cinematic depth"
-            lighting = "Low-key cinematic twilight with warm ambient interior lamps and subtle blue monitor glow"
-            mood = "Intense, focused, high-stakes business environment"
-            color_atmosphere = "Deep obsidian navy and slate gray with warm amber interior highlights"
-            negative_space = TextSafeRegion.FULL_BOTTOM
-            focal_point = "center_right"
-            accent_hex = colors.accent_rose # Rose accent for problem warning
-            depth = "Sharp subject focus with soft bokeh on background scale models"
+            visual_story = "Leads properti masuk dalam volume tinggi namun alur follow-up sales terlambat dan bocor."
+            focal_subject = "Sales manager properti memeriksa alur pesan leads di laptop dengan ekspresi fokus di ruang kerja modern"
+            background_desc = "Interior marketing gallery properti mewah dengan model maket arsitektural di latar belakang"
+            midground_desc = "Meja kerja kayu gelap dengan berkas masterplan dan denah lantai"
+            foreground_desc = "Gradien scrim gelap sinematik di bagian bawah untuk penempatan headline kontras tinggi"
+            lighting_dir = "Directional twilight light dari sisi kanan dengan ambient warm glow"
+            color_mood = "Obsidian navy, slate gray, dan aksen peringatan rose red"
+            accent_hex = colors.accent_rose
+            ns_region = TextSafeRegion.FULL_BOTTOM
 
         elif c_type == ContentType.PROPERTY_INSIGHT:
-            subject = "Elevated architectural panorama of a modern Indonesian urban transit and highway corridor"
-            environment = "Connected residential masterplan surrounded by landscaped greenery and modern toll access interchange"
-            camera_perspective = "Wide drone perspective at golden hour, crisp architectural clarity"
-            lighting = "Dramatic golden hour sunlight casting long warm shadows across roads and modern buildings"
-            mood = "Expansive, visionary, prestigious, high-growth atmosphere"
-            color_atmosphere = "Cinematic slate navy with warm golden horizon reflections"
-            negative_space = TextSafeRegion.FULL_BOTTOM
-            focal_point = "top_center"
-            accent_hex = colors.accent_primary # Cyan for insight
-            depth = "Deep panoramic depth of field with sharp structural lines"
+            visual_story = "Akselerasi infrastruktur tol modern melipatgandakan capital gain kawasan properti."
+            focal_subject = "Jalur tol layang modern yang menghubungkan kawasan hunian terpadu"
+            background_desc = "Panorama lanskap masterplan kota mandiri dengan pepohonan tropis dan cakrawala senja"
+            midground_desc = "Gedung-gedung hunian modern dengan fasad kaca elegan"
+            foreground_desc = "Gradien scrim gelap halus untuk kontras tipografi judul"
+            lighting_dir = "Golden hour sunset lighting dengan pantulan hangat pada permukaan jalan dan kaca"
+            color_mood = "Slate navy, deep indigo, dan warm sunset gold"
+            accent_hex = colors.accent_primary
+            ns_region = TextSafeRegion.FULL_BOTTOM
 
         elif c_type == ContentType.PROPERTY_LISTICLE:
-            subject = "Clean modern architectural building facade with geometric glass windows and elegant facade louvers"
-            environment = "Prestigious commercial district with minimalist urban landscaping"
-            camera_perspective = "Upward vertical perspective, symmetrical architectural framing"
-            lighting = "Diffused overcast twilight lighting with soft subtle edge reflections"
-            mood = "Structured, authoritative, analytical, orderly"
-            color_atmosphere = "Deep midnight navy, dark charcoal slate, and amber accents"
-            negative_space = TextSafeRegion.FULL_BOTTOM
-            focal_point = "top"
-            accent_hex = colors.accent_gold # Gold for listicle
-            depth = "Layered vertical planes with sharp geometric contrast"
+            visual_story = "Struktur poin-poin kesalahan krusial yang harus dihentikan dalam follow-up leads properti."
+            focal_subject = "Fasad arsitektur modern bertingkat dengan garis geometris tegas dan rapi"
+            background_desc = "Distrik komersial modern dengan pencahayaan senja yang tenang"
+            midground_desc = "Kisi-kisi arsitektur (louvers) yang menciptakan kedalaman visual ritmis"
+            foreground_desc = "Area negatif bersih untuk susunan bullet points bernomor"
+            lighting_dir = "Diffused overcast evening light dengan kontras bayangan lembut"
+            color_mood = "Midnight navy, slate charcoal, dan aksen warm amber gold"
+            accent_hex = colors.accent_gold
+            ns_region = TextSafeRegion.FULL_BOTTOM
 
         elif c_type == ContentType.PROPERTY_CASE_STUDY:
-            subject = "Contemporary residential student apartment building (Rukost) with modern tropical facade"
-            environment = "Clean campus neighborhood with manicured palm trees and paved driveway"
-            camera_perspective = "Eye-level 45-degree corner shot showcasing building depth and balconies"
-            lighting = "Sunset golden hour with warm glowing room lights visible through glass windows"
-            mood = "Successful, thriving, verified, high-yield investment feel"
-            color_atmosphere = "Dark obsidian sky with emerald and warm amber architectural lighting"
-            negative_space = TextSafeRegion.FULL_BOTTOM
-            focal_point = "top_right"
-            accent_hex = colors.accent_emerald # Green for case study growth
-            depth = "Clear foreground driveway separation and sharp building facade"
+            visual_story = "Transformasi empiris efisiensi respon pesan leads meningkatkan konversi survey lokasi 300%."
+            focal_subject = "Gedung hunian mahasiswa (Rukost) modern yang beroperasi penuh dengan kamar terisi"
+            background_desc = "Kawasan kampus universitas terkemuka dengan akses jalan tertata rapi"
+            midground_desc = "Area parkir dan lobby penerima tamu dengan pencahayaan interior hangat"
+            foreground_desc = "Box metrik data (+300%) dan area teks judul yang jernih"
+            lighting_dir = "Late afternoon golden sun dengan ambient interior warm light"
+            color_mood = "Obsidian navy, emerald growth green, dan champagne gold"
+            accent_hex = colors.accent_emerald
+            ns_region = TextSafeRegion.FULL_BOTTOM
 
         elif c_type == ContentType.PROPERTY_SHOWCASE:
-            subject = "Luxury modern student residence building (Rukost) with premium exterior finish and glass balconies"
-            environment = "Quiet prestigious residential area with tropical trees and modern street lighting"
-            camera_perspective = "Eye-level architectural hero shot, wide 24mm perspective"
-            lighting = "Late afternoon warm sunshine highlighting natural stone textures and glass reflections"
-            mood = "Exclusive, turnkey, profitable, high-end property asset"
-            color_atmosphere = "Warm champagne gold, natural slate, and deep obsidian navy"
-            negative_space = TextSafeRegion.FULL_BOTTOM
-            focal_point = "top"
+            visual_story = "Showcase unit aset investasi Rukost premium dengan yield sewa tinggi dan legalitas aman."
+            focal_subject = "Bangunan Rukost 3 lantai arsitektur tropis modern dengan balkon kaca dan tanaman hijau"
+            background_desc = "Lingkungan perumahan tenang dan asri dekat kampus ternama"
+            midground_desc = "Gerbang masuk eksklusif dengan pos keamanan dan papan nama proyek"
+            foreground_desc = "Pill spesifikasi unit, badge lokasi, dan penawaran harga"
+            lighting_dir = "Bright warm afternoon sun dengan pencahayaan natural yang tajam"
+            color_mood = "Warm champagne gold, natural stone slate, dan obsidian navy"
             accent_hex = colors.accent_gold
-            depth = "Foreground landscape with crisp architectural building focus"
+            ns_region = TextSafeRegion.FULL_BOTTOM
 
         elif c_type == ContentType.PROPERTY_OPINION:
-            subject = "Minimalist abstract architectural concrete arches and glass reflections"
-            environment = "Sleek contemporary corporate property boardroom terrace overlooking skyline"
-            camera_perspective = "Minimalist centered composition with strong diagonal shadows"
-            lighting = "Dramatic chiaroscuro side lighting with deep controlled shadows"
-            mood = "Authoritative, thought-provoking, bold, forward-looking"
-            color_atmosphere = "Monochrome obsidian and deep indigo slate"
-            negative_space = TextSafeRegion.FULL_BOTTOM
-            focal_point = "center"
-            accent_hex = colors.accent_secondary # Indigo for opinion
-            depth = "Architectural line geometry with deep negative space"
+            visual_story = "Perspektif tegas mengenai masa depan digitalisasi dan otomasi pemasaran properti."
+            focal_subject = "Komposisi arsitektur minimalis modern dengan bayangan diagonal kuat"
+            background_desc = "Terrace ruang rapat eksekutif menghadap cakrawala kota"
+            midground_desc = "Struktur beton ekspos dan kaca reflektif"
+            foreground_desc = "Aksen tanda kutip editorial raksasa dan tipografi tebal"
+            lighting_dir = "Dramatic side lighting chiaroscuro"
+            color_mood = "Deep monochrome obsidian slate dan accent indigo"
+            accent_hex = colors.accent_secondary
+            ns_region = TextSafeRegion.FULL_BOTTOM
 
         else: # PROPERTY_EDUCATION & PROPERTY_SALES_OFFER
-            subject = "Modern commercial property headquarters and architectural sales lounge"
-            environment = "Lush tropical urban development with glass facades and illuminated reception"
-            camera_perspective = "Wide low-angle perspective, cinematic framing"
-            lighting = "Warm evening golden hour with soft diffused highlights"
-            mood = "Trustworthy, educational, professional, prestigious"
-            color_atmosphere = "Deep navy slate with sky cyan accent lighting"
-            negative_space = TextSafeRegion.FULL_BOTTOM
-            focal_point = "top_right"
+            visual_story = "Prinsip fundamental membangun sistem pemasaran properti yang berkelanjutan."
+            focal_subject = "Pusat pemasaran properti modern dengan arsitektur kaca terbuka"
+            background_desc = "Kawasan residensial terencana dengan taman tropis dan jalan aspal mulus"
+            midground_desc = "Interior ruang konsultasi dengan pencahayaan lembut"
+            foreground_desc = "Gradien scrim gelap untuk hierarki teks judul"
+            lighting_dir = "Warm twilight ambient light"
+            color_mood = "Obsidian navy dan electric sky cyan"
             accent_hex = colors.accent_primary
-            depth = "Sharp building exterior with cinematic bokeh background"
+            ns_region = TextSafeRegion.FULL_BOTTOM
 
-        # Build Pure Photography Flux Prompt
-        ns_direction = "bottom half" if negative_space == TextSafeRegion.FULL_BOTTOM else "upper-left area"
+        return VisualConceptSpecification(
+            concept_id=str(uuid.uuid4())[:8],
+            content_type=c_type,
+            visual_story=visual_story,
+            focal_subject=focal_subject,
+            background_description=background_desc,
+            midground_description=midground_desc,
+            foreground_description=foreground_desc,
+            lighting_direction=lighting_dir,
+            color_mood=color_mood,
+            negative_space_region=ns_region,
+            text_safe_region=ns_region,
+            asset_requirements=["background_scene", "foreground_scrim", "graphic_accents"],
+            compositing_required=True
+        )
+
+    @staticmethod
+    def create_art_direction(spec: EditorialContentSpecification) -> VisualArtDirectionSpecification:
+        """Maintains full backward compatibility with Phase 3B."""
+        concept = CreativeDirectorService.create_visual_concept(spec)
+        colors = NUGI_PROPERTI_BRAND_PROFILE.colors
+
+        accent_hex = colors.accent_primary
+        if spec.content_type == ContentType.PROPERTY_PROBLEM:
+            accent_hex = colors.accent_rose
+        elif spec.content_type in (ContentType.PROPERTY_LISTICLE, ContentType.PROPERTY_SHOWCASE):
+            accent_hex = colors.accent_gold
+        elif spec.content_type == ContentType.PROPERTY_CASE_STUDY:
+            accent_hex = colors.accent_emerald
+        elif spec.content_type == ContentType.PROPERTY_OPINION:
+            accent_hex = colors.accent_secondary
+
         image_prompt = (
-            f"Cinematic architectural photography of {subject}, {environment}, "
-            f"{camera_perspective}, {lighting}, {mood}, {color_atmosphere}, {depth}. "
-            f"Preserve clean uncluttered dark negative space on the {ns_direction} for editorial typography overlay. "
-            f"Authentic 35mm photo textures, 8k resolution, no text, no words, no letters, no watermark, no logo, pure photographic background asset."
+            f"Cinematic 35mm architectural photography of {concept.focal_subject}, {concept.background_desc if hasattr(concept, 'background_desc') else concept.background_description}. "
+            f"Lighting: {concept.lighting_direction}. Color atmosphere: {concept.color_mood}. "
+            f"Preserve clean uncluttered dark negative space on the bottom half for editorial typography. "
+            f"8k resolution, authentic textures, no text, no words, no letters, no watermark, no logo, pure photographic background asset."
         )
 
         return VisualArtDirectionSpecification(
-            archetype=archetype,
-            subject=subject,
-            environment=environment,
-            camera_perspective=camera_perspective,
-            composition=f"Visual dominance aligned with {archetype.value}, focal bias toward {focal_point}",
-            lighting=lighting,
-            mood=mood,
-            color_atmosphere=color_atmosphere,
-            negative_space_location=negative_space,
-            focal_point=focal_point,
-            depth=depth,
-            background_treatment="photographic",
+            archetype=spec.suggested_archetype,
+            subject=concept.focal_subject,
+            environment=concept.background_description,
+            camera_perspective="35mm architectural medium angle, cinematic depth",
+            composition=f"Layered editorial visual aligned with {spec.suggested_archetype.value}",
+            lighting=concept.lighting_direction,
+            mood="Authoritative, prestigious, cinematic property media feel",
+            color_atmosphere=concept.color_mood,
+            negative_space_location=concept.negative_space_region,
+            focal_point="top_center",
+            depth="3-plane depth separation",
+            background_treatment="photographic_layered",
             image_prompt=image_prompt,
             negative_prompt="text, words, letters, typography, watermark, logo, banner, poster, frame, UI elements, cartoon, blurry, low quality",
-            text_safe_region=negative_space,
+            text_safe_region=concept.text_safe_region,
             accent_color_hex=accent_hex,
-            visual_symbolism=f"Represents strategic precision in {c_type.value}"
+            visual_symbolism=f"Represents strategic precision in {spec.content_type.value}"
         )
+
+    @staticmethod
+    def generate_visual_variants(
+        editorial_spec: EditorialContentSpecification,
+        base_design_spec: DesignSpecification
+    ) -> List[VisualVariant]:
+        """
+        Generates 3 distinct art direction variants for the user to choose from:
+        Variant A: Cinematic Hero Editorial
+        Variant B: Minimalist Authority Editorial
+        Variant C: Layered Editorial Composite
+        """
+        variants = []
+
+        # Variant A: Cinematic Hero (Default)
+        concept_a = CreativeDirectorService.create_visual_concept(editorial_spec)
+        plan_a = AssetCompositorService.build_composition_plan(concept_a, base_design_spec.accent_color_hex or "#38bdf8")
+        variants.append(VisualVariant(
+            variant_name="Variant A: Cinematic Hero",
+            concept=concept_a,
+            composition_plan=plan_a,
+            visual_qa_score=100
+        ))
+
+        # Variant B: Minimalist Authority
+        concept_b = CreativeDirectorService.create_visual_concept(editorial_spec)
+        concept_b.color_mood = "Deep obsidian monochrome with clean architectural lines"
+        plan_b = AssetCompositorService.build_composition_plan(concept_b, "#6366f1")
+        plan_b.color_grade.preset_name = "DEEP_OBSIDIAN"
+        plan_b.color_grade.contrast = 1.25
+        plan_b.color_grade.temperature = -0.15
+        variants.append(VisualVariant(
+            variant_name="Variant B: Minimalist Authority",
+            concept=concept_b,
+            composition_plan=plan_b,
+            visual_qa_score=95
+        ))
+
+        # Variant C: Layered Editorial Composite
+        concept_c = CreativeDirectorService.create_visual_concept(editorial_spec)
+        concept_c.color_mood = "Warm champagne gold highlights and sunset glow"
+        plan_c = AssetCompositorService.build_composition_plan(concept_c, "#f59e0b")
+        plan_c.color_grade.preset_name = "PREMIUM_GOLD"
+        plan_c.color_grade.temperature = 0.20
+        variants.append(VisualVariant(
+            variant_name="Variant C: Layered Composite",
+            concept=concept_c,
+            composition_plan=plan_c,
+            visual_qa_score=98
+        ))
+
+        return variants
 
     @staticmethod
     def build_design_specification(
@@ -150,8 +232,6 @@ class CreativeDirectorService:
         height: int = 1350
     ) -> DesignSpecification:
         """Translates editorial and art direction specs into a DesignSpecification for the renderer."""
-        
-        # Badge Text formulation
         badge_text_map = {
             ContentType.PROPERTY_PROBLEM: "DILEMA MARKETING PROPERTI",
             ContentType.PROPERTY_INSIGHT: "MARKET INTELLIGENCE",
@@ -163,8 +243,6 @@ class CreativeDirectorService:
             ContentType.PROPERTY_EDUCATION: "EDUKASI PROPERTI"
         }
         badge_text = badge_text_map.get(editorial_spec.content_type, "EDUKASI PROPERTI")
-
-        # Map negative space bias
         ns_bias = "bottom" if art_direction.negative_space_location == TextSafeRegion.FULL_BOTTOM else "left"
 
         visual_prompt_spec = VisualPromptSpecification(

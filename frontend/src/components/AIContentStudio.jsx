@@ -13,7 +13,9 @@ import {
   ArrowRight,
   HelpCircle,
   Lightbulb,
-  Target
+  Target,
+  Sliders,
+  Eye
 } from 'lucide-react';
 import { api } from '../services/api';
 
@@ -29,16 +31,18 @@ export default function AIContentStudio({ currentProject }) {
   const [revisLoading, setRevisLoading] = useState(false);
 
   const [contentPackage, setContentPackage] = useState(null);
+  const [selectedVariant, setSelectedVariant] = useState('Variant A: Cinematic Hero');
+  const [showLayerStack, setShowLayerStack] = useState(false);
   const [error, setError] = useState(null);
   const [copiedCaption, setCopiedCaption] = useState(false);
 
   const presets = [
     { label: 'Leads Boncos Closing Nol', topic: 'Kenapa leads iklan properti banyak tapi closing tetap rendah?', aud: 'Developer & Sales Manager' },
-    { label: '5 Kesalahan Fatal Follow-Up', topic: '5 Kesalahan fatal follow up leads properti yang bikin prospek kabur', aud: 'Sales & Agen Properti' },
-    { label: 'Kenaikan Harga Dekat Tol', topic: 'Kenapa harga rumah di dekat akses tol bisa naik lebih cepat?', aud: 'Investor & Pembeli Properti' },
-    { label: 'Showcase Rukost Jatinangor', topic: 'Unit rukost premium dekat kampus UNPAD Jatinangor siap sewa', aud: 'Investor Passive Income' },
-    { label: 'Studi Kasus Kecepatan Respon', topic: 'Studi kasus hasil transformasi response time tim sales properti', aud: 'Principal Agen & Developer' },
-    { label: 'Opini: Otomasi Marketing', topic: 'Developer yang menolak otomasi marketing akan tertinggal oleh pasar', aud: 'Owner Developer Properti' }
+    { label: '3 Kesalahan Follow-Up', topic: '3 kesalahan follow-up yang membuat calon pembeli hilang', aud: 'Tim Sales & Marketing Properti' },
+    { label: 'Kenaikan Harga Rumah', topic: 'Apakah harga rumah akan terus naik?', aud: 'Investor & Calon Pembeli Properti' },
+    { label: 'Lokasi vs Luas Bangunan', topic: 'Kenapa lokasi lebih penting daripada luas bangunan?', aud: 'Pembeli Rumah Pertama' },
+    { label: 'Sistem Pembagi Leads', topic: 'Bagaimana sistem otomatis membagi leads ke sales?', aud: 'Principal Agen & Direktur Marketing' },
+    { label: 'Cash Flow vs Capital Gain', topic: 'Property investment: cash flow vs capital gain', aud: 'Investor Rukost Mahasiswa' }
   ];
 
   const handleApplyPreset = (p) => {
@@ -64,6 +68,9 @@ export default function AIContentStudio({ currentProject }) {
 
       const result = await api.generateAIContent(payload);
       setContentPackage(result);
+      if (result.active_variant) {
+        setSelectedVariant(result.active_variant);
+      }
     } catch (err) {
       setError(err.message);
     } finally {
@@ -124,17 +131,33 @@ export default function AIContentStudio({ currentProject }) {
     setTimeout(() => setCopiedCaption(false), 2500);
   };
 
+  const layerStackItems = [
+    { z: 12, name: 'Brand Identity', desc: 'Watermark Logo NugiProperti' },
+    { z: 11, name: 'Typography', desc: 'Headline + Highlight Words + Subheadline' },
+    { z: 10, name: 'Graphic Elements', desc: 'Eyebrow Badge Pill & Accent Hairlines' },
+    { z: 9, name: 'Depth Effects', desc: 'Multi-plane Tone Mapping & Vignette' },
+    { z: 8, name: 'Shadows', desc: 'Realistic Ground Contact & Occlusion' },
+    { z: 7, name: 'Lighting Effects', desc: 'Directional Ambient Glow & Rim Light' },
+    { z: 6, name: 'Foreground Scrim', desc: 'Negative Space Gradient Pelindung Kontras' },
+    { z: 5, name: 'Supporting Objects', desc: 'Pills Metrik & Notifikasi Visual' },
+    { z: 4, name: 'Main Focal Subject', desc: 'Subjek Arsitektural / Persona Sales' },
+    { z: 3, name: 'Architecture Scene', desc: 'Kedalaman Fasad & Lanskap' },
+    { z: 2, name: 'Atmosphere', desc: 'Kabut Senja Sinematik & Ambient Haze' },
+    { z: 1, name: 'Background Asset', desc: 'Foto Arsitektur Murni (Flux/Mock)' },
+    { z: 0, name: 'Canvas Base', desc: 'Kanvas Dasar Obsidian Navy (#070B14)' }
+  ];
+
   return (
     <div className="page-body">
       {/* Top Banner */}
       <div style={{ marginBottom: '22px' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
           <Sparkles size={26} color="var(--accent-cyan)" />
-          <h2 style={{ fontSize: '1.45rem', fontWeight: 800 }}>AI Content & Art Direction Studio</h2>
-          <span className="badge badge-info" style={{ fontSize: '0.74rem' }}>Phase 3B Intelligence</span>
+          <h2 style={{ fontSize: '1.45rem', fontWeight: 800 }}>AI Content & Compositing Studio</h2>
+          <span className="badge badge-info" style={{ fontSize: '0.74rem' }}>Phase 3C Layered Engine</span>
         </div>
         <p style={{ fontSize: '0.88rem', color: 'var(--text-muted)', marginTop: '4px' }}>
-          Input brief sederhana ➔ AI Content Strategist ➔ Creative Director ➔ Deterministic Pillow Rendering ➔ Visual QA.
+          Content Strategy ➔ Visual Concept ➔ 13-Layer Compositing ➔ Lighting Match ➔ Color Grading ➔ Deterministic Typography.
         </p>
       </div>
 
@@ -228,12 +251,12 @@ export default function AIContentStudio({ currentProject }) {
               style={{ width: '100%', marginTop: '10px', padding: '12px' }}
             >
               {generating ? <RefreshCw size={16} className="spin" /> : <Sparkles size={16} />}
-              <span>{generating ? 'AI Strategist & Director Sedang Berpikir...' : 'Generate Full Content Package'}</span>
+              <span>{generating ? 'Creative Director & Compositor Sedang Berjalan...' : 'Generate Layered Editorial Package'}</span>
             </button>
           </form>
         </div>
 
-        {/* Right Column: AI Strategy, Copy, Visual Art Direction & Rendered Output */}
+        {/* Right Column: AI Strategy, Visual Concept, Compositing & Output */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
           {error && (
             <div className="card" style={{ borderColor: 'var(--accent-rose)', color: 'var(--accent-rose)' }}>
@@ -244,44 +267,79 @@ export default function AIContentStudio({ currentProject }) {
           {generating && (
             <div className="card" style={{ textAlign: 'center', padding: '50px 20px', color: 'var(--text-muted)' }}>
               <RefreshCw size={32} className="spin" color="var(--accent-cyan)" style={{ margin: '0 auto 16px auto' }} />
-              <h4 style={{ color: '#fff', fontSize: '1.1rem', fontWeight: 700 }}>Merumuskan Strategi & Art Direction...</h4>
+              <h4 style={{ color: '#fff', fontSize: '1.1rem', fontWeight: 700 }}>Menjalankan 13-Layer Compositing Engine...</h4>
               <p style={{ fontSize: '0.84rem', marginTop: '6px' }}>
-                Content Strategist ➔ Copywriter ➔ Creative Director ➔ Pillow Renderer ➔ Visual QA
+                Visual Concept ➔ Multi-Asset Depth ➔ Lighting Match ➔ Color Grading ➔ Deterministic Typography
               </p>
             </div>
           )}
 
           {!generating && contentPackage && (
             <>
-              {/* Strategy & Intelligence Preview */}
-              <div className="card" style={{ background: 'rgba(15, 23, 42, 0.75)', borderColor: 'var(--border-highlight)' }}>
+              {/* Visual Variants Selector (1-3 Variants) */}
+              {contentPackage.variants && contentPackage.variants.length > 0 && (
+                <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
+                  <span style={{ fontSize: '0.78rem', color: 'var(--text-dim)', fontWeight: 700 }}>PILIH VARIAN VISUAL:</span>
+                  {contentPackage.variants.map((v, i) => (
+                    <button
+                      key={i}
+                      type="button"
+                      className={`btn btn-sm ${selectedVariant === v.variant_name ? 'btn-primary' : 'btn-secondary'}`}
+                      style={{ fontSize: '0.76rem' }}
+                      onClick={() => setSelectedVariant(v.variant_name)}
+                    >
+                      {v.variant_name}
+                    </button>
+                  ))}
+                </div>
+              )}
+
+              {/* Visual Concept Story & Art Direction Card */}
+              <div className="card" style={{ background: 'rgba(15, 23, 42, 0.85)', borderColor: 'var(--border-highlight)' }}>
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '12px' }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                    <Lightbulb size={18} color="var(--accent-gold)" />
-                    <h3 style={{ fontSize: '1rem', fontWeight: 800 }}>2. AI Content Strategy & Art Direction</h3>
+                    <Compass size={18} color="var(--accent-cyan)" />
+                    <h3 style={{ fontSize: '1rem', fontWeight: 800 }}>Visual Concept & Scene Direction</h3>
                   </div>
-                  <span className="badge badge-info">{contentPackage.content_type}</span>
-                </div>
-
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '10px', fontSize: '0.78rem' }}>
-                  <div style={{ background: 'rgba(0,0,0,0.3)', padding: '8px 12px', borderRadius: 'var(--radius-sm)' }}>
-                    <span style={{ color: 'var(--text-dim)' }}>Arketipe Visual: </span>
-                    <strong style={{ color: 'var(--accent-cyan)' }}>{contentPackage.art_direction_spec.archetype}</strong>
-                  </div>
-                  <div style={{ background: 'rgba(0,0,0,0.3)', padding: '8px 12px', borderRadius: 'var(--radius-sm)' }}>
-                    <span style={{ color: 'var(--text-dim)' }}>CTA Business Rule: </span>
-                    <strong style={{ color: 'var(--accent-emerald)' }}>{contentPackage.editorial_spec.cta_policy}</strong>
-                  </div>
-                  <div style={{ background: 'rgba(0,0,0,0.3)', padding: '8px 12px', borderRadius: 'var(--radius-sm)' }}>
-                    <span style={{ color: 'var(--text-dim)' }}>Negative Space: </span>
-                    <strong style={{ color: '#fff' }}>{contentPackage.art_direction_spec.negative_space_location}</strong>
+                  <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                    <button
+                      type="button"
+                      className="btn btn-sm btn-secondary"
+                      style={{ fontSize: '0.72rem', padding: '4px 8px' }}
+                      onClick={() => setShowLayerStack(!showLayerStack)}
+                    >
+                      <Layers size={13} />
+                      <span>{showLayerStack ? 'Sembunyikan Layer' : 'Inspeksi 13-Layer Stack'}</span>
+                    </button>
+                    <span className="badge badge-info">{contentPackage.content_type}</span>
                   </div>
                 </div>
 
-                <div style={{ marginTop: '12px', fontSize: '0.8rem', color: 'var(--text-secondary)', borderTop: '1px solid var(--border-subtle)', paddingTop: '10px' }}>
-                  <p><strong>🎯 Sudut Pandang Editorial:</strong> {contentPackage.editorial_spec.editorial_angle}</p>
-                  <p style={{ marginTop: '4px' }}><strong>💡 Core Insight:</strong> {contentPackage.editorial_spec.core_insight}</p>
-                </div>
+                {contentPackage.concept_spec && (
+                  <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                    <p><strong>📖 Cerita Visual:</strong> {contentPackage.concept_spec.visual_story}</p>
+                    <p><strong>🎯 Subjek Utama:</strong> {contentPackage.concept_spec.focal_subject}</p>
+                    <p><strong>💡 Pencahayaan:</strong> {contentPackage.concept_spec.lighting_direction} • <strong>Mood Warna:</strong> {contentPackage.concept_spec.color_mood}</p>
+                  </div>
+                )}
+
+                {/* Optional Layer Stack Inspector */}
+                {showLayerStack && (
+                  <div style={{ marginTop: '14px', borderTop: '1px solid var(--border-subtle)', paddingTop: '12px' }}>
+                    <p style={{ fontSize: '0.74rem', color: 'var(--accent-cyan)', fontWeight: 700, marginBottom: '8px' }}>
+                      ⚡ 13-Layer Active Compositing Stack:
+                    </p>
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '6px', fontSize: '0.72rem' }}>
+                      {layerStackItems.map((layer) => (
+                        <div key={layer.z} style={{ background: 'rgba(0,0,0,0.3)', padding: '6px 8px', borderRadius: '4px', border: '1px solid var(--border-subtle)' }}>
+                          <span style={{ color: 'var(--accent-gold)', fontWeight: 700 }}>L{layer.z}: </span>
+                          <strong style={{ color: '#fff' }}>{layer.name}</strong>
+                          <p style={{ color: 'var(--text-dim)', fontSize: '0.68rem', marginTop: '2px' }}>{layer.desc}</p>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
               </div>
 
               {/* Main Content & Visual Preview Container */}
@@ -290,16 +348,16 @@ export default function AIContentStudio({ currentProject }) {
                 <div style={{ background: '#04070d', borderRadius: 'var(--radius-lg)', padding: '10px', border: '1px solid var(--border-highlight)', boxShadow: 'var(--shadow-lg)' }}>
                   <img
                     src={contentPackage.rendered_asset_url}
-                    alt="Rendered Editorial Graphic"
+                    alt="Rendered Layered Composite"
                     style={{ width: '100%', borderRadius: 'var(--radius-md)', display: 'block' }}
                   />
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '12px', padding: '0 4px' }}>
                     <span style={{ fontSize: '0.74rem', color: 'var(--text-dim)' }}>
-                      1080 × 1350 (4:5 Instagram Feed)
+                      1080 × 1350 (4:5 Instagram Portrait)
                     </span>
                     <a
                       href={contentPackage.rendered_asset_url}
-                      download={`nugiproperti_${contentPackage.content_type.toLowerCase()}_1080x1350.png`}
+                      download={`nugiproperti_composite_${contentPackage.content_type.toLowerCase()}_1080x1350.png`}
                       className="btn btn-secondary btn-sm"
                     >
                       <Download size={14} />
@@ -374,7 +432,7 @@ export default function AIContentStudio({ currentProject }) {
                         </button>
                       </div>
                     </div>
-                    <div style={{ maxHeight: '220px', overflowY: 'auto', background: 'rgba(0,0,0,0.3)', padding: '12px', borderRadius: 'var(--radius-sm)', fontSize: '0.8rem', whiteSpace: 'pre-wrap', lineHeight: 1.5, color: 'var(--text-secondary)' }}>
+                    <div style={{ maxHeight: '200px', overflowY: 'auto', background: 'rgba(0,0,0,0.3)', padding: '12px', borderRadius: 'var(--radius-sm)', fontSize: '0.8rem', whiteSpace: 'pre-wrap', lineHeight: 1.5, color: 'var(--text-secondary)' }}>
                       {contentPackage.editorial_spec.caption}
                     </div>
                   </div>

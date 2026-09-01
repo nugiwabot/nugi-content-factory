@@ -126,6 +126,9 @@ class ContentPackage(BaseModel):
     editorial_spec: EditorialContentSpecification
     art_direction_spec: VisualArtDirectionSpecification
     design_spec: DesignSpecification
+    concept_spec: Optional[Dict[str, Any]] = None
+    variants: List[Dict[str, Any]] = Field(default_factory=list)
+    active_variant: Optional[str] = "Variant A: Cinematic Hero"
     rendered_asset_path: Optional[str] = None
     rendered_asset_url: Optional[str] = None
     visual_qa: Optional[VisualQAResult] = None
