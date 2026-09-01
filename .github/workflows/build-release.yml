@@ -78,10 +78,6 @@ jobs:
           New-Item -ItemType Directory -Force -Path release
           Compress-Archive -Path "dist/Nugi Content Factory/*" -DestinationPath "release/Nugi-Content-Factory-Windows-x64-Portable.zip" -Force
 
-      - name: Run Windows Installer Smoke Test (Quality Gate 4)
-        run: |
-          python packaging/test_installer_smoke.py
-
       - name: Compute SHA256 Checksums
         shell: pwsh
         working-directory: release
@@ -91,6 +87,10 @@ jobs:
             "$hash  $($_.Name)" | Out-File -FilePath SHA256SUMS.txt -Append -Encoding utf8
           }
           Get-Content SHA256SUMS.txt
+
+      - name: Run Windows Installer Smoke Test (Quality Gate 4)
+        run: |
+          python packaging/test_installer_smoke.py
 
       - name: Upload Packaging Artifacts to Workflow Run
         uses: actions/upload-artifact@v4
