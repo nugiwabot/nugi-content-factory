@@ -3,7 +3,7 @@ import { LayoutGrid, FileText, Image as ImageIcon, Palette, Clock, Layers, Spark
 
 export default function Sidebar({ activeTab, setActiveTab }) {
   const menuItems = [
-    { id: 'ai_studio', label: 'AI Content Studio', icon: Sparkles, badge: 'Phase 3B' },
+    { id: 'ai_studio', label: 'AI Agent Copilot', icon: Sparkles, badge: 'Chat Mode' },
     { id: 'design_studio', label: 'Design Engine (1080x1350)', icon: Layers },
     { id: 'studio', label: 'Content Gallery', icon: ImageIcon },
     { id: 'briefs', label: 'AI Brief Creator', icon: FileText },
@@ -35,9 +35,9 @@ export default function Sidebar({ activeTab, setActiveTab }) {
                 width: '100%',
                 padding: '10px 14px',
                 borderRadius: 'var(--radius-md)',
-                background: isActive ? 'rgba(56, 189, 248, 0.12)' : 'transparent',
-                border: isActive ? '1px solid rgba(56, 189, 248, 0.3)' : '1px solid transparent',
-                color: isActive ? 'var(--accent-cyan)' : 'var(--text-muted)',
+                background: isActive ? 'rgba(168, 85, 247, 0.15)' : 'transparent',
+                border: isActive ? '1px solid rgba(168, 85, 247, 0.35)' : '1px solid transparent',
+                color: isActive ? '#c084fc' : 'var(--text-muted)',
                 fontWeight: isActive ? 700 : 500,
                 fontSize: '0.88rem',
                 cursor: 'pointer',
@@ -50,7 +50,7 @@ export default function Sidebar({ activeTab, setActiveTab }) {
                 <span>{item.label}</span>
               </div>
               {item.badge && (
-                <span style={{ fontSize: '0.65rem', background: 'rgba(56, 189, 248, 0.2)', color: 'var(--accent-cyan)', padding: '2px 6px', borderRadius: '4px', fontWeight: 700 }}>
+                <span style={{ fontSize: '0.65rem', background: isActive ? 'rgba(168, 85, 247, 0.25)' : 'rgba(56, 189, 248, 0.2)', color: isActive ? '#e9d5ff' : 'var(--accent-cyan)', padding: '2px 6px', borderRadius: '4px', fontWeight: 700 }}>
                   {item.badge}
                 </span>
               )}

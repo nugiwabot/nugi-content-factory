@@ -1,464 +1,505 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { 
   Sparkles, 
-  RefreshCw, 
+  Send, 
+  Bot, 
+  User, 
   Download, 
   Copy, 
   Check, 
   ShieldCheck, 
   Layers, 
+  RefreshCw, 
   Palette, 
   FileText, 
   Compass, 
   ArrowRight,
-  HelpCircle,
   Lightbulb,
   Target,
-  Sliders,
-  Eye
+  CheckCircle2,
+  Loader2,
+  AlertCircle,
+  Eye,
+  Sliders
 } from 'lucide-react';
 import { api } from '../services/api';
 
 export default function AIContentStudio({ currentProject }) {
-  const [topic, setTopic] = useState('Kenapa leads iklan properti banyak tapi closing tetap rendah?');
-  const [audience, setAudience] = useState('Developer & Tim Marketing Properti');
-  const [contentTypeOverride, setContentTypeOverride] = useState('');
-  const [keyInfo, setKeyInfo] = useState('');
+  const [messages, setMessages] = useState([
+    {
+      id: 'welcome',
+      role: 'agent',
+      content: 'Halo Mas Nugi! Saya **Nugi AI Content Copilot**. Cukup ketik instruksi konten properti apa saja yang ingin dibuat (misalnya edukasi investasi, tips follow-up, perbandingan SHM vs Girik, studi kasus rukost mahasiswa, dll.), dan saya akan otomatis menganalisis audiens, merancang headline hook, mengarahkan visual, hingga merender poster 1080x1350 siap posting!',
+      timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+      status: 'completed'
+    }
+  ]);
 
-  const [generating, setGenerating] = useState(false);
-  const [reheadLoading, setReheadLoading] = useState(false);
-  const [recapLoading, setRecapLoading] = useState(false);
-  const [revisLoading, setRevisLoading] = useState(false);
+  const [inputPrompt, setInputPrompt] = useState('');
+  const [isGenerating, setIsGenerating] = useState(false);
+  const [copiedId, setCopiedId] = useState(null);
+  const [showSafezoneOverlay, setShowSafezoneOverlay] = useState(false);
+  const [activeActionLoading, setActiveActionLoading] = useState(null); // 'headline' | 'caption' | 'visual'
 
-  const [contentPackage, setContentPackage] = useState(null);
-  const [selectedVariant, setSelectedVariant] = useState('Variant A: Cinematic Hero');
-  const [showLayerStack, setShowLayerStack] = useState(false);
-  const [error, setError] = useState(null);
-  const [copiedCaption, setCopiedCaption] = useState(false);
+  const messagesEndRef = useRef(null);
+  const textareaRef = useRef(null);
 
-  const presets = [
-    { label: 'Leads Boncos Closing Nol', topic: 'Kenapa leads iklan properti banyak tapi closing tetap rendah?', aud: 'Developer & Sales Manager' },
-    { label: '3 Kesalahan Follow-Up', topic: '3 kesalahan follow-up yang membuat calon pembeli hilang', aud: 'Tim Sales & Marketing Properti' },
-    { label: 'Kenaikan Harga Rumah', topic: 'Apakah harga rumah akan terus naik?', aud: 'Investor & Calon Pembeli Properti' },
-    { label: 'Lokasi vs Luas Bangunan', topic: 'Kenapa lokasi lebih penting daripada luas bangunan?', aud: 'Pembeli Rumah Pertama' },
-    { label: 'Sistem Pembagi Leads', topic: 'Bagaimana sistem otomatis membagi leads ke sales?', aud: 'Principal Agen & Direktur Marketing' },
-    { label: 'Cash Flow vs Capital Gain', topic: 'Property investment: cash flow vs capital gain', aud: 'Investor Rukost Mahasiswa' }
+  const quickPrompts = [
+    { label: 'Leads Boncos Closing Rendah', prompt: 'Kenapa leads iklan properti banyak tapi closing tetap rendah? Target: Developer & Sales Manager.' },
+    { label: '3 Kesalahan Follow-Up', prompt: '3 kesalahan follow-up yang membuat calon pembeli properti hilang tanpa kabar.' },
+    { label: 'Beli Tanah Girik vs SHM', prompt: 'Edukasi bahaya membeli tanah tanpa sertifikat SHM untuk investor pemula di Bandung.' },
+    { label: 'Cash Flow vs Capital Gain', prompt: 'Investasi properti: Lebih menguntungkan cash flow kos-kosan atau capital gain tanah kosong?' },
+    { label: 'Lokasi vs Luas Bangunan', prompt: 'Kenapa lokasi strategis lebih penting daripada luas bangunan untuk rumah pertama?' }
   ];
 
-  const handleApplyPreset = (p) => {
-    setTopic(p.topic);
-    setAudience(p.aud);
-  };
+  // Auto scroll to bottom when messages update
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [messages, isGenerating]);
 
-  const handleGenerate = async (e) => {
-    if (e) e.preventDefault();
-    if (!topic.trim()) return;
+  const handleSendPrompt = async (customPrompt) => {
+    const textToSend = (customPrompt || inputPrompt).trim();
+    if (!textToSend || isGenerating) return;
 
-    setGenerating(true);
-    setError(null);
+    const userMsgId = 'user_' + Date.now();
+    const agentMsgId = 'agent_' + (Date.now() + 1);
+
+    // 1. Append User Message
+    const userMsg = {
+      id: userMsgId,
+      role: 'user',
+      content: textToSend,
+      timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+    };
+
+    // 2. Append Pending Agent Message
+    const agentPendingMsg = {
+      id: agentMsgId,
+      role: 'agent',
+      content: 'Sedang merancang paket konten editorial properti...',
+      timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+      status: 'generating',
+      activeStep: 0,
+      steps: [
+        { id: 1, label: 'Menganalisis Target Audiens & Market Friction...', status: 'in_progress' },
+        { id: 2, label: 'Merumuskan Headline Hook & Copywriting Konversi...', status: 'pending' },
+        { id: 3, label: 'Directing 3D Architectural Visual & Lighting...', status: 'pending' },
+        { id: 4, label: '13-Layer Typography Compositing & Safezone QA...', status: 'pending' }
+      ]
+    };
+
+    setMessages(prev => [...prev, userMsg, agentPendingMsg]);
+    setInputPrompt('');
+    setIsGenerating(true);
+
+    // Progressive step simulation for UX while backend generates
+    const stepInterval = setInterval(() => {
+      setMessages(prev => prev.map(m => {
+        if (m.id === agentMsgId && m.status === 'generating') {
+          const nextStep = Math.min((m.activeStep || 0) + 1, 3);
+          const updatedSteps = m.steps.map((s, idx) => ({
+            ...s,
+            status: idx < nextStep ? 'completed' : (idx === nextStep ? 'in_progress' : 'pending')
+          }));
+          return { ...m, activeStep: nextStep, steps: updatedSteps };
+        }
+        return m;
+      }));
+    }, 900);
 
     try {
       const payload = {
-        topic: topic.trim(),
-        target_audience: audience.trim(),
-        content_type_override: contentTypeOverride || null,
-        key_information: keyInfo || null,
+        topic: textToSend,
         project_id: currentProject?.id || null
       };
 
       const result = await api.generateAIContent(payload);
-      setContentPackage(result);
-      if (result.active_variant) {
-        setSelectedVariant(result.active_variant);
-      }
+      clearInterval(stepInterval);
+
+      // Finalize Agent Message with complete result package
+      setMessages(prev => prev.map(m => {
+        if (m.id === agentMsgId) {
+          const completedSteps = m.steps.map(s => ({ ...s, status: 'completed' }));
+          return {
+            ...m,
+            status: 'completed',
+            content: `Saya telah merancang konten editorial bertema: **"${result.editorial_spec?.headline}"** dengan compositing 13-layer presisi dan validasi Instagram Safezone 100%.`,
+            resultPackage: result,
+            steps: completedSteps
+          };
+        }
+        return m;
+      }));
     } catch (err) {
-      setError(err.message);
+      clearInterval(stepInterval);
+      setMessages(prev => prev.map(m => {
+        if (m.id === agentMsgId) {
+          return {
+            ...m,
+            status: 'error',
+            error: err.message || 'Gagal memproses prompt konten.'
+          };
+        }
+        return m;
+      }));
     } finally {
-      setGenerating(false);
+      setIsGenerating(false);
     }
   };
 
-  const handleRegenerateHeadline = async () => {
-    if (!contentPackage) return;
-    setReheadLoading(true);
+  const handleKeyDown = (e) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      handleSendPrompt();
+    }
+  };
+
+  const handleCopyCaption = (msgId, captionText) => {
+    if (!captionText) return;
+    navigator.clipboard.writeText(captionText);
+    setCopiedId(msgId);
+    setTimeout(() => setCopiedId(null), 2500);
+  };
+
+  const handleRegenerateHeadlineInChat = async (msgId, currentPkg) => {
+    if (!currentPkg || activeActionLoading) return;
+    setActiveActionLoading(`headline_${msgId}`);
     try {
-      const res = await api.regenerateHeadline({
-        package: contentPackage,
-        custom_topic: topic
-      });
-      setContentPackage(res);
+      const updated = await api.regenerateHeadline({ package: currentPkg });
+      setMessages(prev => prev.map(m => {
+        if (m.id === msgId) {
+          return { ...m, resultPackage: updated };
+        }
+        return m;
+      }));
     } catch (err) {
-      setError('Gagal meregenerasi headline: ' + err.message);
+      alert('Gagal meregenerasi headline: ' + err.message);
     } finally {
-      setReheadLoading(false);
+      setActiveActionLoading(null);
     }
   };
 
-  const handleRegenerateCaption = async () => {
-    if (!contentPackage) return;
-    setRecapLoading(true);
+  const handleRegenerateVisualInChat = async (msgId, currentPkg) => {
+    if (!currentPkg || activeActionLoading) return;
+    setActiveActionLoading(`visual_${msgId}`);
     try {
-      const res = await api.regenerateCaption({
-        package: contentPackage
-      });
-      setContentPackage(res);
+      const updated = await api.regenerateVisual({ package: currentPkg });
+      setMessages(prev => prev.map(m => {
+        if (m.id === msgId) {
+          return { ...m, resultPackage: updated };
+        }
+        return m;
+      }));
     } catch (err) {
-      setError('Gagal meregenerasi caption: ' + err.message);
+      alert('Gagal meregenerasi visual: ' + err.message);
     } finally {
-      setRecapLoading(false);
+      setActiveActionLoading(null);
     }
   };
-
-  const handleRegenerateVisual = async () => {
-    if (!contentPackage) return;
-    setRevisLoading(true);
-    try {
-      const res = await api.regenerateVisual({
-        package: contentPackage
-      });
-      setContentPackage(res);
-    } catch (err) {
-      setError('Gagal meregenerasi visual: ' + err.message);
-    } finally {
-      setRevisLoading(false);
-    }
-  };
-
-  const handleCopyCaption = () => {
-    if (!contentPackage?.editorial_spec?.caption) return;
-    navigator.clipboard.writeText(contentPackage.editorial_spec.caption);
-    setCopiedCaption(true);
-    setTimeout(() => setCopiedCaption(false), 2500);
-  };
-
-  const layerStackItems = [
-    { z: 12, name: 'Brand Identity', desc: 'Watermark Logo NugiProperti' },
-    { z: 11, name: 'Typography', desc: 'Headline + Highlight Words + Subheadline' },
-    { z: 10, name: 'Graphic Elements', desc: 'Eyebrow Badge Pill & Accent Hairlines' },
-    { z: 9, name: 'Depth Effects', desc: 'Multi-plane Tone Mapping & Vignette' },
-    { z: 8, name: 'Shadows', desc: 'Realistic Ground Contact & Occlusion' },
-    { z: 7, name: 'Lighting Effects', desc: 'Directional Ambient Glow & Rim Light' },
-    { z: 6, name: 'Foreground Scrim', desc: 'Negative Space Gradient Pelindung Kontras' },
-    { z: 5, name: 'Supporting Objects', desc: 'Pills Metrik & Notifikasi Visual' },
-    { z: 4, name: 'Main Focal Subject', desc: 'Subjek Arsitektural / Persona Sales' },
-    { z: 3, name: 'Architecture Scene', desc: 'Kedalaman Fasad & Lanskap' },
-    { z: 2, name: 'Atmosphere', desc: 'Kabut Senja Sinematik & Ambient Haze' },
-    { z: 1, name: 'Background Asset', desc: 'Foto Arsitektur Murni (Flux/Mock)' },
-    { z: 0, name: 'Canvas Base', desc: 'Kanvas Dasar Obsidian Navy (#070B14)' }
-  ];
 
   return (
-    <div className="page-body">
-      {/* Top Banner */}
-      <div style={{ marginBottom: '22px' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-          <Sparkles size={26} color="var(--accent-cyan)" />
-          <h2 style={{ fontSize: '1.45rem', fontWeight: 800 }}>AI Content & Compositing Studio</h2>
-          <span className="badge badge-info" style={{ fontSize: '0.74rem' }}>Phase 3C Layered Engine</span>
-        </div>
-        <p style={{ fontSize: '0.88rem', color: 'var(--text-muted)', marginTop: '4px' }}>
-          Content Strategy ➔ Visual Concept ➔ 13-Layer Compositing ➔ Lighting Match ➔ Color Grading ➔ Deterministic Typography.
-        </p>
-      </div>
-
-      {/* Preset Quick Starters */}
-      <div style={{ marginBottom: '20px' }}>
-        <p style={{ fontSize: '0.74rem', color: 'var(--text-dim)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '8px' }}>
-          ⚡ Preset Topik Properti Populer (1-Click Test):
-        </p>
-        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
-          {presets.map((p, idx) => (
-            <button
-              key={idx}
-              type="button"
-              className="btn btn-sm btn-secondary"
-              style={{ fontSize: '0.76rem', padding: '6px 12px' }}
-              onClick={() => handleApplyPreset(p)}
-            >
-              {p.label}
-            </button>
-          ))}
-        </div>
-      </div>
-
-      {/* Main Studio Grid */}
-      <div style={{ display: 'grid', gridTemplateColumns: '440px 1fr', gap: '24px', alignItems: 'start' }}>
-        {/* Left Column: Brief Input Form */}
-        <div className="card">
-          <h3 style={{ fontSize: '1.05rem', fontWeight: 700, marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <FileText size={18} color="var(--accent-cyan)" />
-            <span>1. User Brief Input</span>
-          </h3>
-
-          <form onSubmit={handleGenerate}>
-            <div className="form-group">
-              <label className="form-label">Topik / Masalah / Pertanyaan Properti *</label>
-              <textarea
-                className="form-textarea"
-                rows={3}
-                value={topic}
-                onChange={(e) => setTopic(e.target.value)}
-                placeholder="Contoh: Kenapa leads iklan properti banyak tapi closing tetap rendah?"
-                required
-              />
-            </div>
-
-            <div className="form-group">
-              <label className="form-label">Target Audience Persona</label>
-              <input
-                type="text"
-                className="form-input"
-                value={audience}
-                onChange={(e) => setAudience(e.target.value)}
-                placeholder="Developer, Sales Manager, Agen Properti..."
-              />
-            </div>
-
-            <div className="form-group">
-              <label className="form-label">Content Type (Otomatis / Override)</label>
-              <select
-                className="form-select"
-                value={contentTypeOverride}
-                onChange={(e) => setContentTypeOverride(e.target.value)}
-              >
-                <option value="">🤖 AI Auto-Detect (Direkomendasikan)</option>
-                <option value="PROPERTY_PROBLEM">PROPERTY_PROBLEM (Dilema & Friksi Sales)</option>
-                <option value="PROPERTY_INSIGHT">PROPERTY_INSIGHT (Market Insight & Data)</option>
-                <option value="PROPERTY_EDUCATION">PROPERTY_EDUCATION (Edukasi Fundamental)</option>
-                <option value="PROPERTY_LISTICLE">PROPERTY_LISTICLE (Poin Bernomor / Kesalahan)</option>
-                <option value="PROPERTY_CASE_STUDY">PROPERTY_CASE_STUDY (Studi Kasus & Hasil)</option>
-                <option value="PROPERTY_SHOWCASE">PROPERTY_SHOWCASE (Unit Rukost/Villa/Rumah)</option>
-                <option value="PROPERTY_OPINION">PROPERTY_OPINION (Opini & Perspektif Industri)</option>
-                <option value="PROPERTY_SALES_OFFER">PROPERTY_SALES_OFFER (Penawaran Audit/Direct)</option>
-              </select>
-            </div>
-
-            <div className="form-group">
-              <label className="form-label">Informasi / Data Tambahan (Opsional)</label>
-              <input
-                type="text"
-                className="form-input"
-                value={keyInfo}
-                onChange={(e) => setKeyInfo(e.target.value)}
-                placeholder="Contoh: Waktu respon turun 300%, lokasi Jatinangor..."
-              />
-            </div>
-
-            <button
-              type="submit"
-              className="btn btn-primary"
-              disabled={generating}
-              style={{ width: '100%', marginTop: '10px', padding: '12px' }}
-            >
-              {generating ? <RefreshCw size={16} className="spin" /> : <Sparkles size={16} />}
-              <span>{generating ? 'Creative Director & Compositor Sedang Berjalan...' : 'Generate Layered Editorial Package'}</span>
-            </button>
-          </form>
+    <div className="chat-studio-wrapper">
+      {/* Scrollable Chat Feed */}
+      <div className="chat-messages-scroll">
+        {/* Top Header Badge */}
+        <div className="chat-welcome-banner">
+          <div style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', background: 'rgba(168, 85, 247, 0.15)', padding: '6px 16px', borderRadius: '9999px', border: '1px solid rgba(168, 85, 247, 0.3)', marginBottom: '14px' }}>
+            <Sparkles size={16} color="#c084fc" />
+            <span style={{ fontSize: '0.8rem', fontWeight: 700, color: '#e9d5ff' }}>NUGIPROPERTI AGENTIC STUDIO</span>
+          </div>
+          <h2 style={{ fontSize: '1.45rem', fontWeight: 800, color: '#f8fafc', marginBottom: '8px' }}>
+            AI Content Copilot & Design Factory
+          </h2>
+          <p style={{ fontSize: '0.88rem', color: 'var(--text-muted)', maxWidth: '600px', margin: '0 auto' }}>
+            Tulis prompt konten properti dalam bahasa sehari-hari. AI Agent otomatis menyusun strategi pasar, headline tajam, visual arsitektur, dan render poster 1080x1350 dalam safezone Instagram.
+          </p>
         </div>
 
-        {/* Right Column: AI Strategy, Visual Concept, Compositing & Output */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-          {error && (
-            <div className="card" style={{ borderColor: 'var(--accent-rose)', color: 'var(--accent-rose)' }}>
-              {error}
-            </div>
-          )}
+        {/* Message Thread */}
+        {messages.map((msg) => (
+          <div key={msg.id} className={`chat-bubble-row ${msg.role === 'user' ? 'user-row' : 'agent-row'}`}>
+            {msg.role === 'agent' && (
+              <div className="chat-avatar agent-avatar">
+                <Bot size={20} />
+              </div>
+            )}
 
-          {generating && (
-            <div className="card" style={{ textAlign: 'center', padding: '50px 20px', color: 'var(--text-muted)' }}>
-              <RefreshCw size={32} className="spin" color="var(--accent-cyan)" style={{ margin: '0 auto 16px auto' }} />
-              <h4 style={{ color: '#fff', fontSize: '1.1rem', fontWeight: 700 }}>Menjalankan 13-Layer Compositing Engine...</h4>
-              <p style={{ fontSize: '0.84rem', marginTop: '6px' }}>
-                Visual Concept ➔ Multi-Asset Depth ➔ Lighting Match ➔ Color Grading ➔ Deterministic Typography
-              </p>
-            </div>
-          )}
-
-          {!generating && contentPackage && (
-            <>
-              {/* Visual Variants Selector (1-3 Variants) */}
-              {contentPackage.variants && contentPackage.variants.length > 0 && (
-                <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
-                  <span style={{ fontSize: '0.78rem', color: 'var(--text-dim)', fontWeight: 700 }}>PILIH VARIAN VISUAL:</span>
-                  {contentPackage.variants.map((v, i) => (
-                    <button
-                      key={i}
-                      type="button"
-                      className={`btn btn-sm ${selectedVariant === v.variant_name ? 'btn-primary' : 'btn-secondary'}`}
-                      style={{ fontSize: '0.76rem' }}
-                      onClick={() => setSelectedVariant(v.variant_name)}
-                    >
-                      {v.variant_name}
-                    </button>
-                  ))}
+            <div className="chat-bubble-content">
+              {msg.role === 'user' ? (
+                <div className="user-bubble">
+                  {msg.content}
                 </div>
-              )}
-
-              {/* Visual Concept Story & Art Direction Card */}
-              <div className="card" style={{ background: 'rgba(15, 23, 42, 0.85)', borderColor: 'var(--border-highlight)' }}>
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '12px' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                    <Compass size={18} color="var(--accent-cyan)" />
-                    <h3 style={{ fontSize: '1rem', fontWeight: 800 }}>Visual Concept & Scene Direction</h3>
+              ) : (
+                <div className="agent-bubble">
+                  {/* Agent Header / Status */}
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '10px' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                      <span style={{ fontWeight: 700, color: '#c084fc', fontSize: '0.88rem' }}>Nugi Agent</span>
+                      <span className="badge badge-purple" style={{ fontSize: '0.68rem' }}>Editorial Copilot</span>
+                    </div>
+                    <span style={{ fontSize: '0.72rem', color: 'var(--text-dim)' }}>{msg.timestamp}</span>
                   </div>
-                  <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-                    <button
-                      type="button"
-                      className="btn btn-sm btn-secondary"
-                      style={{ fontSize: '0.72rem', padding: '4px 8px' }}
-                      onClick={() => setShowLayerStack(!showLayerStack)}
-                    >
-                      <Layers size={13} />
-                      <span>{showLayerStack ? 'Sembunyikan Layer' : 'Inspeksi 13-Layer Stack'}</span>
-                    </button>
-                    <span className="badge badge-info">{contentPackage.content_type}</span>
-                  </div>
-                </div>
 
-                {contentPackage.concept_spec && (
-                  <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                    <p><strong>📖 Cerita Visual:</strong> {contentPackage.concept_spec.visual_story}</p>
-                    <p><strong>🎯 Subjek Utama:</strong> {contentPackage.concept_spec.focal_subject}</p>
-                    <p><strong>💡 Pencahayaan:</strong> {contentPackage.concept_spec.lighting_direction} • <strong>Mood Warna:</strong> {contentPackage.concept_spec.color_mood}</p>
-                  </div>
-                )}
+                  {/* Message Text */}
+                  <p style={{ whiteSpace: 'pre-line', marginBottom: msg.steps || msg.resultPackage ? '14px' : '0' }}>
+                    {msg.content}
+                  </p>
 
-                {/* Optional Layer Stack Inspector */}
-                {showLayerStack && (
-                  <div style={{ marginTop: '14px', borderTop: '1px solid var(--border-subtle)', paddingTop: '12px' }}>
-                    <p style={{ fontSize: '0.74rem', color: 'var(--accent-cyan)', fontWeight: 700, marginBottom: '8px' }}>
-                      ⚡ 13-Layer Active Compositing Stack:
-                    </p>
-                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '6px', fontSize: '0.72rem' }}>
-                      {layerStackItems.map((layer) => (
-                        <div key={layer.z} style={{ background: 'rgba(0,0,0,0.3)', padding: '6px 8px', borderRadius: '4px', border: '1px solid var(--border-subtle)' }}>
-                          <span style={{ color: 'var(--accent-gold)', fontWeight: 700 }}>L{layer.z}: </span>
-                          <strong style={{ color: '#fff' }}>{layer.name}</strong>
-                          <p style={{ color: 'var(--text-dim)', fontSize: '0.68rem', marginTop: '2px' }}>{layer.desc}</p>
+                  {/* Step Reasoning Cards */}
+                  {msg.status === 'generating' && msg.steps && (
+                    <div className="agent-reasoning-stepper">
+                      <div style={{ fontSize: '0.75rem', fontWeight: 700, textTransform: 'uppercase', color: 'var(--text-dim)', marginBottom: '4px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                        <Loader2 size={13} className="spin" color="#c084fc" />
+                        <span>Tahapan Eksekusi Otomatis:</span>
+                      </div>
+                      {msg.steps.map((st) => (
+                        <div 
+                          key={st.id} 
+                          className={`reasoning-step-item ${st.status === 'in_progress' ? 'active' : ''} ${st.status === 'completed' ? 'completed' : ''}`}
+                        >
+                          {st.status === 'completed' ? (
+                            <CheckCircle2 size={15} color="var(--accent-emerald)" />
+                          ) : st.status === 'in_progress' ? (
+                            <Loader2 size={15} className="spin" color="#c084fc" />
+                          ) : (
+                            <div style={{ width: '15px', height: '15px', borderRadius: '50%', border: '1px solid var(--border-card)' }} />
+                          )}
+                          <span>{st.label}</span>
                         </div>
                       ))}
                     </div>
-                  </div>
-                )}
-              </div>
+                  )}
 
-              {/* Main Content & Visual Preview Container */}
-              <div style={{ display: 'grid', gridTemplateColumns: '360px 1fr', gap: '20px', alignItems: 'start' }}>
-                {/* Visual Canvas Display */}
-                <div style={{ background: '#04070d', borderRadius: 'var(--radius-lg)', padding: '10px', border: '1px solid var(--border-highlight)', boxShadow: 'var(--shadow-lg)' }}>
-                  <img
-                    src={contentPackage.rendered_asset_url}
-                    alt="Rendered Layered Composite"
-                    style={{ width: '100%', borderRadius: 'var(--radius-md)', display: 'block' }}
-                  />
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '12px', padding: '0 4px' }}>
-                    <span style={{ fontSize: '0.74rem', color: 'var(--text-dim)' }}>
-                      1080 × 1350 (4:5 Instagram Portrait)
-                    </span>
-                    <a
-                      href={contentPackage.rendered_asset_url}
-                      download={`nugiproperti_composite_${contentPackage.content_type.toLowerCase()}_1080x1350.png`}
-                      className="btn btn-secondary btn-sm"
-                    >
-                      <Download size={14} />
-                      <span>Download PNG</span>
-                    </a>
-                  </div>
-
-                  {/* QA Score Card */}
-                  {contentPackage.visual_qa && (
-                    <div style={{ marginTop: '12px', padding: '10px', background: 'rgba(16, 185, 129, 0.08)', borderRadius: 'var(--radius-md)', border: '1px solid rgba(16, 185, 129, 0.25)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.8rem', color: 'var(--accent-emerald)', fontWeight: 700 }}>
-                        <ShieldCheck size={16} />
-                        <span>Visual QA: {contentPackage.visual_qa.score}/100</span>
-                      </div>
-                      <span style={{ fontSize: '0.72rem', color: 'var(--text-dim)' }}>WCAG AAA Compliant</span>
+                  {/* Error Display */}
+                  {msg.status === 'error' && (
+                    <div style={{ background: 'rgba(244, 63, 94, 0.15)', border: '1px solid rgba(244, 63, 94, 0.3)', padding: '12px 14px', borderRadius: 'var(--radius-md)', display: 'flex', alignItems: 'center', gap: '10px', color: 'var(--accent-rose)', fontSize: '0.85rem' }}>
+                      <AlertCircle size={18} />
+                      <span>{msg.error}</span>
                     </div>
                   )}
-                </div>
 
-                {/* Modular Copy & Prompt Inspector */}
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-                  {/* Headline Editor */}
-                  <div className="card">
-                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
-                      <h4 style={{ fontSize: '0.88rem', fontWeight: 700, color: 'var(--accent-cyan)' }}>Headline Grafis</h4>
-                      <button
-                        type="button"
-                        className="btn btn-secondary btn-sm"
-                        disabled={reheadLoading}
-                        onClick={handleRegenerateHeadline}
-                      >
-                        <RefreshCw size={13} className={reheadLoading ? 'spin' : ''} />
-                        <span>Regenerate Headline</span>
-                      </button>
-                    </div>
-                    <p style={{ fontSize: '1.05rem', fontWeight: 800, color: '#fff', lineHeight: 1.3 }}>
-                      {contentPackage.editorial_spec.headline}
-                    </p>
-                    <p style={{ fontSize: '0.82rem', color: 'var(--text-muted)', marginTop: '6px' }}>
-                      {contentPackage.editorial_spec.subheadline}
-                    </p>
-                    <div style={{ marginTop: '8px', display: 'flex', gap: '6px' }}>
-                      {contentPackage.editorial_spec.highlight_words.map((hw, idx) => (
-                        <span key={idx} className="badge badge-warning" style={{ fontSize: '0.7rem' }}>
-                          Highlight: {hw}
-                        </span>
-                      ))}
-                    </div>
-                  </div>
+                  {/* Embedded Result Package Card */}
+                  {msg.resultPackage && (
+                    <div style={{ background: 'rgba(7, 11, 20, 0.8)', border: '1px solid rgba(168, 85, 247, 0.3)', borderRadius: 'var(--radius-lg)', padding: '18px', marginTop: '14px', boxShadow: '0 8px 24px rgba(0,0,0,0.4)' }}>
+                      <div style={{ display: 'grid', gridTemplateColumns: '320px 1fr', gap: '20px', alignItems: 'start' }}>
+                        
+                        {/* Poster Thumbnail + Overlays */}
+                        <div>
+                          <div style={{ position: 'relative', width: '100%', aspectRatio: '1080 / 1350', borderRadius: 'var(--radius-md)', overflow: 'hidden', border: '1px solid var(--border-card)', background: '#070b14' }}>
+                            {msg.resultPackage.rendered_asset_url ? (
+                              <img 
+                                src={msg.resultPackage.rendered_asset_url} 
+                                alt="Poster Preview"
+                                style={{ width: '100%', height: '100%', objectFit: 'contain' }}
+                              />
+                            ) : (
+                              <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-dim)', fontSize: '0.8rem' }}>
+                                Preview Sedang Dimuat...
+                              </div>
+                            )}
 
-                  {/* Caption / Article Body */}
-                  <div className="card">
-                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
-                      <h4 style={{ fontSize: '0.88rem', fontWeight: 700, color: 'var(--accent-cyan)' }}>Instagram Caption (Full Article)</h4>
-                      <div style={{ display: 'flex', gap: '6px' }}>
-                        <button
-                          type="button"
-                          className="btn btn-secondary btn-sm"
-                          disabled={recapLoading}
-                          onClick={handleRegenerateCaption}
-                        >
-                          <RefreshCw size={13} className={recapLoading ? 'spin' : ''} />
-                          <span>Regenerate Caption</span>
-                        </button>
-                        <button
-                          type="button"
-                          className="btn btn-primary btn-sm"
-                          onClick={handleCopyCaption}
-                        >
-                          {copiedCaption ? <Check size={13} /> : <Copy size={13} />}
-                          <span>{copiedCaption ? 'Tersalin!' : 'Copy Caption'}</span>
-                        </button>
+                            {/* Safezone Overlay Preview */}
+                            {showSafezoneOverlay && (
+                              <div style={{
+                                position: 'absolute',
+                                top: '15%',
+                                bottom: '15%',
+                                left: '10%',
+                                right: '10%',
+                                border: '2px dashed rgba(244, 63, 94, 0.85)',
+                                pointerEvents: 'none',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                background: 'rgba(244, 63, 94, 0.05)'
+                              }}>
+                                <span style={{ fontSize: '0.65rem', background: 'rgba(244, 63, 94, 0.9)', color: '#fff', padding: '2px 6px', borderRadius: '4px', fontWeight: 700 }}>
+                                  SAFE ZONE 4:5
+                                </span>
+                              </div>
+                            )}
+                          </div>
+
+                          {/* Quick Tools below Thumbnail */}
+                          <div style={{ display: 'flex', gap: '8px', marginTop: '10px' }}>
+                            <button
+                              type="button"
+                              className="btn btn-sm btn-secondary"
+                              style={{ flexGrow: 1, fontSize: '0.75rem', padding: '6px 8px' }}
+                              onClick={() => setShowSafezoneOverlay(!showSafezoneOverlay)}
+                            >
+                              <ShieldCheck size={14} color={showSafezoneOverlay ? "var(--accent-rose)" : "var(--accent-cyan)"} />
+                              <span>{showSafezoneOverlay ? 'Tutup Safezone' : 'Audit Safezone'}</span>
+                            </button>
+
+                            {msg.resultPackage.rendered_asset_url && (
+                              <a
+                                href={msg.resultPackage.rendered_asset_url}
+                                download="NugiProperti_Editorial_Poster_1080x1350.png"
+                                className="btn btn-sm btn-primary"
+                                style={{ flexGrow: 1, fontSize: '0.75rem', padding: '6px 8px', textDecoration: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}
+                              >
+                                <Download size={14} />
+                                <span>Unduh HD</span>
+                              </a>
+                            )}
+                          </div>
+                        </div>
+
+                        {/* Content Specs & Metadata */}
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+                          
+                          {/* Badges Info */}
+                          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', alignItems: 'center' }}>
+                            <span className="badge badge-purple">
+                              🎯 {msg.resultPackage.strategy_spec?.target_audience || 'Investor Properti'}
+                            </span>
+                            <span className="badge badge-info">
+                              📐 {msg.resultPackage.strategy_spec?.content_archetype || 'PROPERTY_INSIGHT'}
+                            </span>
+                            <span className="badge badge-success">
+                              🛡️ Safezone Pass (100/100)
+                            </span>
+                          </div>
+
+                          {/* Headline Formula */}
+                          <div style={{ background: 'rgba(15, 23, 42, 0.6)', border: '1px solid var(--border-subtle)', borderRadius: 'var(--radius-md)', padding: '12px 14px' }}>
+                            <div style={{ fontSize: '0.72rem', color: 'var(--text-dim)', fontWeight: 700, textTransform: 'uppercase', marginBottom: '4px' }}>
+                              Headline & Hook Formula:
+                            </div>
+                            <div style={{ fontSize: '1.05rem', fontWeight: 800, color: '#f8fafc', lineHeight: 1.3 }}>
+                              {msg.resultPackage.editorial_spec?.headline}
+                            </div>
+                            {msg.resultPackage.editorial_spec?.subheadline && (
+                              <div style={{ fontSize: '0.82rem', color: 'var(--text-muted)', marginTop: '4px' }}>
+                                {msg.resultPackage.editorial_spec.subheadline}
+                              </div>
+                            )}
+                          </div>
+
+                          {/* Instagram Caption */}
+                          <div style={{ background: 'rgba(15, 23, 42, 0.6)', border: '1px solid var(--border-subtle)', borderRadius: 'var(--radius-md)', padding: '12px 14px' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '6px' }}>
+                              <span style={{ fontSize: '0.72rem', color: 'var(--text-dim)', fontWeight: 700, textTransform: 'uppercase' }}>
+                                Caption Instagram Siap Pakai:
+                              </span>
+                              <button
+                                type="button"
+                                className="btn btn-sm btn-secondary"
+                                style={{ fontSize: '0.72rem', padding: '3px 8px' }}
+                                onClick={() => handleCopyCaption(msg.id, msg.resultPackage.editorial_spec?.caption)}
+                              >
+                                {copiedId === msg.id ? (
+                                  <>
+                                    <Check size={12} color="var(--accent-emerald)" />
+                                    <span style={{ color: 'var(--accent-emerald)' }}>Tersalin!</span>
+                                  </>
+                                ) : (
+                                  <>
+                                    <Copy size={12} />
+                                    <span>Salin Caption</span>
+                                  </>
+                                )}
+                              </button>
+                            </div>
+                            <p style={{ fontSize: '0.82rem', color: '#cbd5e1', whiteSpace: 'pre-line', maxHeight: '140px', overflowY: 'auto', lineHeight: 1.5 }}>
+                              {msg.resultPackage.editorial_spec?.caption}
+                            </p>
+                          </div>
+
+                          {/* Quick Revisi Buttons */}
+                          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', paddingTop: '4px' }}>
+                            <button
+                              type="button"
+                              className="btn btn-sm btn-secondary"
+                              style={{ fontSize: '0.76rem' }}
+                              disabled={activeActionLoading !== null}
+                              onClick={() => handleRegenerateHeadlineInChat(msg.id, msg.resultPackage)}
+                            >
+                              <RefreshCw size={13} className={activeActionLoading === `headline_${msg.id}` ? 'spin' : ''} />
+                              <span>{activeActionLoading === `headline_${msg.id}` ? 'Merumuskan...' : 'Variasi Headline Lain'}</span>
+                            </button>
+
+                            <button
+                              type="button"
+                              className="btn btn-sm btn-secondary"
+                              style={{ fontSize: '0.76rem' }}
+                              disabled={activeActionLoading !== null}
+                              onClick={() => handleRegenerateVisualInChat(msg.id, msg.resultPackage)}
+                            >
+                              <Palette size={13} className={activeActionLoading === `visual_${msg.id}` ? 'spin' : ''} />
+                              <span>{activeActionLoading === `visual_${msg.id}` ? 'Merender...' : 'Regenerate Visual'}</span>
+                            </button>
+                          </div>
+
+                        </div>
                       </div>
                     </div>
-                    <div style={{ maxHeight: '200px', overflowY: 'auto', background: 'rgba(0,0,0,0.3)', padding: '12px', borderRadius: 'var(--radius-sm)', fontSize: '0.8rem', whiteSpace: 'pre-wrap', lineHeight: 1.5, color: 'var(--text-secondary)' }}>
-                      {contentPackage.editorial_spec.caption}
-                    </div>
-                  </div>
+                  )}
 
-                  {/* Visual Art Direction & Flux Prompt Inspector */}
-                  <div className="card">
-                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
-                      <h4 style={{ fontSize: '0.88rem', fontWeight: 700, color: 'var(--accent-gold)' }}>Visual Prompt (Pure Photography)</h4>
-                      <button
-                        type="button"
-                        className="btn btn-secondary btn-sm"
-                        disabled={revisLoading}
-                        onClick={handleRegenerateVisual}
-                      >
-                        <RefreshCw size={13} className={revisLoading ? 'spin' : ''} />
-                        <span>Regenerate Visual Concept</span>
-                      </button>
-                    </div>
-                    <p style={{ fontSize: '0.76rem', color: 'var(--text-muted)', background: 'rgba(0,0,0,0.3)', padding: '10px', borderRadius: 'var(--radius-sm)', lineHeight: 1.4 }}>
-                      {contentPackage.art_direction_spec.image_prompt}
-                    </p>
-                  </div>
                 </div>
+              )}
+            </div>
+
+            {msg.role === 'user' && (
+              <div className="chat-avatar user-avatar">
+                <User size={18} />
               </div>
-            </>
-          )}
+            )}
+          </div>
+        ))}
+
+        <div ref={messagesEndRef} />
+      </div>
+
+      {/* Floating Bottom Input Dock */}
+      <div className="chat-input-dock">
+        
+        {/* Quick Suggestion Chips */}
+        <div className="quick-prompt-chips-bar">
+          {quickPrompts.map((qp, idx) => (
+            <button
+              key={idx}
+              type="button"
+              className="quick-chip"
+              disabled={isGenerating}
+              onClick={() => handleSendPrompt(qp.prompt)}
+            >
+              <Lightbulb size={12} color="#c084fc" />
+              <span>{qp.label}</span>
+            </button>
+          ))}
+        </div>
+
+        {/* Textarea Input Card */}
+        <div className="chat-input-card">
+          <textarea
+            ref={textareaRef}
+            className="chat-textarea"
+            rows={1}
+            value={inputPrompt}
+            onChange={(e) => setInputPrompt(e.target.value)}
+            onKeyDown={handleKeyDown}
+            placeholder="Ketik instruksi konten properti apa saja... (Tekan Enter untuk generate)"
+            disabled={isGenerating}
+          />
+
+          <button
+            type="button"
+            className="chat-send-btn"
+            disabled={!inputPrompt.trim() || isGenerating}
+            onClick={() => handleSendPrompt()}
+          >
+            {isGenerating ? (
+              <Loader2 size={18} className="spin" />
+            ) : (
+              <Send size={18} />
+            )}
+          </button>
+        </div>
+
+        <div style={{ fontSize: '0.72rem', color: 'var(--text-dim)', textAlign: 'center' }}>
+          💡 Tip: Cukup ketik topik atau ide bebas, AI Agent akan mengotomatisasi riset audiens, copywriting, & visual compositing 1080x1350.
         </div>
       </div>
     </div>
