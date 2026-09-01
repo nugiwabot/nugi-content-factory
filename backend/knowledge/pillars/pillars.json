@@ -1,0 +1,61 @@
+[
+  {
+    "key": "PROBLEM_EDUCATION",
+    "name": "Problem & Education",
+    "business_goal": "Awareness",
+    "ratio": 0.6,
+    "mapped_content_types": ["PROPERTY_EDUCATION", "PROPERTY_PROBLEM", "PROPERTY_INSIGHT", "PROPERTY_LISTICLE", "PROPERTY_OPINION"],
+    "sub_topics": [
+      "Kebocoran leads iklan properti",
+      "Tips follow-up sales",
+      "Perbandingan manual vs otomasi",
+      "Legalitas properti (SHM vs Girik)",
+      "Analisis pasar & infrastruktur"
+    ],
+    "example_angles": [
+      "Kenapa leads banyak tapi closing nol?",
+      "3 kesalahan follow-up yang membunuh konversi",
+      "Kenyataan pahit: iklan bukan masalahnya"
+    ],
+    "prompt_guidance": "Konten edukatif yang membangun kesadaran dan kepercayaan. Tanpa CTA jualan langsung.",
+    "sort_order": 1
+  },
+  {
+    "key": "PROOF",
+    "name": "Proof of Work & Demo",
+    "business_goal": "Trust",
+    "ratio": 0.25,
+    "mapped_content_types": ["PROPERTY_CASE_STUDY", "DATA_EDITORIAL", "PROPERTY_SHOWCASE"],
+    "sub_topics": [
+      "Studi kasus transformasi klien",
+      "Bedah fitur CRM / automasi",
+      "Showcase unit & yield",
+      "Data & statistik ROI"
+    ],
+    "example_angles": [
+      "Cara satu properti naikkan conversion rate 300%",
+      "Rukost premium dekat kampus: yield 12%/tahun",
+      "Dari 120 menit ke <2 menit: transformasi respon"
+    ],
+    "prompt_guidance": "Bukti hasil nyata, data spesifik, dan showcase yang membangun kredibilitas.",
+    "sort_order": 2
+  },
+  {
+    "key": "OFFER",
+    "name": "Direct Offer & Invitation",
+    "business_goal": "Conversion",
+    "ratio": 0.15,
+    "mapped_content_types": ["PROPERTY_SALES_OFFER", "SOFT_SELLING"],
+    "sub_topics": [
+      "Konsultasi gratis WhatsApp",
+      "Paket fast-track setup sistem",
+      "Audit alur leads gratis"
+    ],
+    "example_angles": [
+      "Slot audit alur leads gratis terbatas",
+      "Setup sistem leads 5 hari tanpa koding"
+    ],
+    "prompt_guidance": "Ajakan aksi langsung (CTA wajib). Gunakan: 'Jadwalkan Sesi Audit Gratis' atau 'Konsultasi via WhatsApp'.",
+    "sort_order": 3
+  }
+]

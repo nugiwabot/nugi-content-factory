@@ -21,16 +21,20 @@ import {
   AlertCircle,
   Eye,
   Sliders,
-  MessageSquareQuote
+  MessageSquareQuote,
+  Upload,
+  ListChecks,
+  LayoutGrid
 } from 'lucide-react';
 import { api } from '../services/api';
+import BatchResultsGallery from './BatchResultsGallery';
 
 export default function AIContentStudio({ currentProject }) {
   const [messages, setMessages] = useState([
     {
       id: 'welcome',
       role: 'agent',
-      content: 'Halo Mas Nugi! Saya **Nugi AI Content Copilot**.\n\nSaya siap membantu Anda mendiskusikan strategi konten properti atau langsung membuat poster 1080x1350 siap posting (edukasi investasi, tips follow-up, studi kasus rukost, perbandingan SHM vs Girik, dll.).\n\nAda yang ingin Anda diskusikan atau langsung dibuatkan konten hari ini?',
+      content: 'Halo Mas Nugi! Saya **Nugi AI Content Copilot**.\n\nSaya siap membantu Anda mendiskusikan strategi konten properti atau langsung membuat poster 1080x1350 siap posting (edukasi investasi, tips follow-up, studi kasus rukost, perbandingan SHM vs Girik, dll.).\n\nGunakan mode **Chat** untuk diskusi, **Plan** untuk meminta agent merencanakan banyak konten dari satu goal, atau **Bulk** untuk menempelkan banyak topik sekaligus.',
       timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
       status: 'completed',
       suggestions: [
@@ -43,6 +47,14 @@ export default function AIContentStudio({ currentProject }) {
   ]);
 
   const [inputPrompt, setInputPrompt] = useState('');
+  const [studioMode, setStudioMode] = useState('chat'); // chat | plan | bulk
+  const [planCount, setPlanCount] = useState(5);
+  const [bulkText, setBulkText] = useState('');
+  const [batchRun, setBatchRun] = useState(null);
+  const [batchRunId, setBatchRunId] = useState(null);
+  const [batchError, setBatchError] = useState(null);
+  const [uploading, setUploading] = useState(false);
+  const [knowledgeMsg, setKnowledgeMsg] = useState(null);
   const [isGenerating, setIsGenerating] = useState(false);
   const [copiedId, setCopiedId] = useState(null);
   const [showSafezoneOverlay, setShowSafezoneOverlay] = useState(false);
@@ -51,6 +63,7 @@ export default function AIContentStudio({ currentProject }) {
 
   const messagesEndRef = useRef(null);
   const textareaRef = useRef(null);
+  const fileInputRef = useRef(null);
 
   const quickPrompts = [
     { label: 'Leads Boncos Closing Rendah', prompt: 'Kenapa leads iklan properti banyak tapi closing tetap rendah? Target: Developer & Sales Manager.' },
@@ -64,6 +77,34 @@ export default function AIContentStudio({ currentProject }) {
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages, isGenerating]);
+
+  // Poll batch run progress
+  useEffect(() => {
+    if (!batchRunId) return;
+    let cancelled = false;
+
+    const poll = async () => {
+      try {
+        const run = await api.getBatchRun(batchRunId);
+        if (cancelled) return;
+        setBatchRun(run);
+        if (['COMPLETED', 'FAILED', 'CANCELLED'].includes(run.status)) {
+          setBatchRunId(null);
+          setIsGenerating(false);
+        }
+      } catch (e) {
+        if (!cancelled) {
+          setBatchError(e.message);
+          setBatchRunId(null);
+          setIsGenerating(false);
+        }
+      }
+    };
+
+    poll();
+    const interval = setInterval(poll, 2500);
+    return () => { cancelled = true; clearInterval(interval); };
+  }, [batchRunId]);
 
   const handleSendPrompt = async (customPrompt) => {
     const textToSend = (customPrompt || inputPrompt).trim();
@@ -168,10 +209,83 @@ export default function AIContentStudio({ currentProject }) {
     }
   };
 
+  const handlePlanSubmit = async () => {
+    const goal = inputPrompt.trim();
+    if (!goal || isGenerating) return;
+    setInputPrompt('');
+    setIsGenerating(true);
+    setBatchRun(null);
+    setBatchError(null);
+    try {
+      const plan = await api.planBatch({
+        goal,
+        count: planCount,
+        project_id: currentProject?.id || null
+      });
+      const items = plan.items || [];
+      if (!items.length) throw new Error('Agent gagal menyusun rencana konten. Coba goal yang lebih spesifik.');
+
+      const run = await api.runBatch({
+        project_id: currentProject?.id,
+        mode: 'plan',
+        goal,
+        items,
+        count: planCount
+      });
+      setBatchRunId(run.id);
+    } catch (err) {
+      setBatchError(err.message || 'Gagal menjalankan batch plan.');
+      setIsGenerating(false);
+    }
+  };
+
+  const handleBulkSubmit = async () => {
+    const lines = bulkText.split('\n').map(l => l.trim()).filter(Boolean);
+    if (!lines.length || isGenerating) return;
+    setIsGenerating(true);
+    setBatchRun(null);
+    setBatchError(null);
+    try {
+      const run = await api.runBatch({
+        project_id: currentProject?.id,
+        mode: 'bulk',
+        goal: `Bulk generation ${lines.length} topik`,
+        lines
+      });
+      setBulkText('');
+      setBatchRunId(run.id);
+    } catch (err) {
+      setBatchError(err.message || 'Gagal menjalankan bulk generation.');
+      setIsGenerating(false);
+    }
+  };
+
+  const handleSubmit = () => {
+    if (studioMode === 'plan') handlePlanSubmit();
+    else if (studioMode === 'bulk') handleBulkSubmit();
+    else handleSendPrompt();
+  };
+
   const handleKeyDown = (e) => {
-    if (e.key === 'Enter' && !e.shiftKey) {
+    if (e.key === 'Enter' && !e.shiftKey && studioMode !== 'bulk') {
       e.preventDefault();
-      handleSendPrompt();
+      handleSubmit();
+    }
+  };
+
+  const handleUploadKnowledge = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setUploading(true);
+    setKnowledgeMsg(null);
+    try {
+      const res = await api.uploadKnowledge(file);
+      setKnowledgeMsg(`${res.count} skill berhasil ditambahkan ke knowledge base.`);
+    } catch (err) {
+      setKnowledgeMsg('Gagal upload: ' + err.message);
+    } finally {
+      setUploading(false);
+      if (fileInputRef.current) fileInputRef.current.value = '';
     }
   };
 
@@ -503,46 +617,137 @@ export default function AIContentStudio({ currentProject }) {
           </div>
         ))}
 
+        {/* Batch Results Gallery */}
+        {(batchRun || batchError) && (
+          <div>
+            {batchError && (
+              <div style={{ background: 'rgba(244, 63, 94, 0.15)', border: '1px solid rgba(244, 63, 94, 0.3)', padding: '12px 14px', borderRadius: 'var(--radius-md)', color: 'var(--accent-rose)', fontSize: '0.85rem', display: 'flex', alignItems: 'center', gap: '10px' }}>
+                <AlertCircle size={18} />
+                <span>{batchError}</span>
+              </div>
+            )}
+            <BatchResultsGallery batchRun={batchRun} onRefresh={() => batchRunId && null} />
+          </div>
+        )}
+
         <div ref={messagesEndRef} />
       </div>
 
       {/* Floating Bottom Input Dock */}
       <div className="chat-input-dock">
         
-        {/* Quick Suggestion Chips */}
-        <div className="quick-prompt-chips-bar">
-          {quickPrompts.map((qp, idx) => (
-            <button
-              key={idx}
-              type="button"
-              className="quick-chip"
-              disabled={isGenerating}
-              onClick={() => handleSendPrompt(qp.prompt)}
-            >
-              <Lightbulb size={12} color="#c084fc" />
-              <span>{qp.label}</span>
-            </button>
-          ))}
+        {/* Mode Toggle + Upload */}
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '10px', gap: '10px', flexWrap: 'wrap' }}>
+          <div style={{ display: 'flex', gap: '8px' }}>
+            {[
+              { id: 'chat', label: 'Chat', icon: MessageSquareQuote },
+              { id: 'plan', label: 'Plan (goal → N konten)', icon: ListChecks },
+              { id: 'bulk', label: 'Bulk (paste topik)', icon: LayoutGrid }
+            ].map(m => {
+              const Icon = m.icon;
+              const active = studioMode === m.id;
+              return (
+                <button
+                  key={m.id}
+                  type="button"
+                  onClick={() => { setStudioMode(m.id); setBatchRun(null); setBatchError(null); }}
+                  style={{
+                    display: 'flex', alignItems: 'center', gap: '6px',
+                    padding: '7px 14px', borderRadius: '9999px', cursor: 'pointer',
+                    fontSize: '0.78rem', fontWeight: 700,
+                    background: active ? 'rgba(168, 85, 247, 0.2)' : 'rgba(15, 23, 42, 0.6)',
+                    border: active ? '1px solid rgba(168, 85, 247, 0.5)' : '1px solid var(--border-subtle)',
+                    color: active ? '#e9d5ff' : 'var(--text-muted)'
+                  }}
+                >
+                  <Icon size={14} color={active ? '#c084fc' : 'var(--text-dim)'} />
+                  <span>{m.label}</span>
+                </button>
+              );
+            })}
+          </div>
+
+          <button
+            type="button"
+            className="btn btn-secondary btn-sm"
+            onClick={() => fileInputRef.current?.click()}
+            disabled={uploading}
+            style={{ fontSize: '0.76rem' }}
+          >
+            {uploading ? <Loader2 size={14} className="spin" /> : <Upload size={14} />}
+            <span>{uploading ? 'Uploading...' : 'Upload Skill'}</span>
+          </button>
+          <input ref={fileInputRef} type="file" accept=".md,.markdown,.zip" style={{ display: 'none' }} onChange={handleUploadKnowledge} />
         </div>
+
+        {knowledgeMsg && (
+          <div style={{ fontSize: '0.74rem', color: knowledgeMsg.startsWith('Gagal') ? 'var(--accent-rose)' : 'var(--accent-emerald)', marginBottom: '8px' }}>
+            {knowledgeMsg}
+          </div>
+        )}
+
+        {/* Quick Suggestion Chips (chat mode only) */}
+        {studioMode === 'chat' && (
+          <div className="quick-prompt-chips-bar">
+            {quickPrompts.map((qp, idx) => (
+              <button
+                key={idx}
+                type="button"
+                className="quick-chip"
+                disabled={isGenerating}
+                onClick={() => handleSendPrompt(qp.prompt)}
+              >
+                <Lightbulb size={12} color="#c084fc" />
+                <span>{qp.label}</span>
+              </button>
+            ))}
+          </div>
+        )}
 
         {/* Textarea Input Card */}
         <div className="chat-input-card">
-          <textarea
-            ref={textareaRef}
-            className="chat-textarea"
-            rows={1}
-            value={inputPrompt}
-            onChange={(e) => setInputPrompt(e.target.value)}
-            onKeyDown={handleKeyDown}
-            placeholder="Ajak diskusi atau minta buat konten... (Tekan Enter untuk kirim)"
-            disabled={isGenerating}
-          />
+          {studioMode === 'bulk' ? (
+            <textarea
+              ref={textareaRef}
+              className="chat-textarea"
+              rows={5}
+              value={bulkText}
+              onChange={(e) => setBulkText(e.target.value)}
+              placeholder={'Tempel banyak topik (satu per baris).\nContoh:\nKenapa leads properti banyak tapi closing rendah?\nEdukasi SHM vs Girik\nCash flow vs capital gain'}
+              disabled={isGenerating}
+            />
+          ) : (
+            <textarea
+              ref={textareaRef}
+              className="chat-textarea"
+              rows={1}
+              value={inputPrompt}
+              onChange={(e) => setInputPrompt(e.target.value)}
+              onKeyDown={handleKeyDown}
+              placeholder={studioMode === 'plan' ? 'Tulis goal, mis. "Buat 10 konten edukasi + 5 penawaran untuk akun kost Jatinangor"...' : 'Ajak diskusi atau minta buat konten... (Tekan Enter untuk kirim)'}
+              disabled={isGenerating}
+            />
+          )}
+
+          {studioMode === 'plan' && (
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '0 4px' }}>
+              <span style={{ fontSize: '0.76rem', color: 'var(--text-muted)' }}>Jumlah:</span>
+              <input
+                type="number"
+                min={1}
+                max={30}
+                value={planCount}
+                onChange={(e) => setPlanCount(parseInt(e.target.value, 10) || 5)}
+                style={{ width: '64px', padding: '6px 8px', borderRadius: 'var(--radius-sm)', background: 'rgba(15, 23, 42, 0.8)', border: '1px solid var(--border-subtle)', color: '#f8fafc' }}
+              />
+            </div>
+          )}
 
           <button
             type="button"
             className="chat-send-btn"
-            disabled={!inputPrompt.trim() || isGenerating}
-            onClick={() => handleSendPrompt()}
+            disabled={isGenerating || (studioMode === 'bulk' ? !bulkText.trim() : !inputPrompt.trim())}
+            onClick={handleSubmit}
           >
             {isGenerating ? (
               <Loader2 size={18} className="spin" />
@@ -553,7 +758,9 @@ export default function AIContentStudio({ currentProject }) {
         </div>
 
         <div style={{ fontSize: '0.72rem', color: 'var(--text-dim)', textAlign: 'center' }}>
-          💬 Tanya strategi pemasaran properti, diskusikan angle ide, atau ketik topik untuk otomatis render poster 1080x1350.
+          {studioMode === 'chat' && '💬 Tanya strategi pemasaran properti, diskusikan angle ide, atau ketik topik untuk otomatis render poster 1080x1350.'}
+          {studioMode === 'plan' && '🎯 Agent akan merencanakan & memproduksi banyak poster+caption sekaligus sesuai pillar 60-25-15 Anda.'}
+          {studioMode === 'bulk' && '📋 Tempel banyak topik (satu per baris) untuk bulk-generate poster+caption. Tekan tombol kirim untuk mulai.'}
         </div>
       </div>
     </div>

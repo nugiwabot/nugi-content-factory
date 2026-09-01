@@ -36,6 +36,25 @@ export const api = {
   regenerateVisual: (data) => apiClient.post('/ai-studio/regenerate/visual', data),
   renderCustomSpec: (data) => apiClient.post('/ai-studio/render', data),
 
+  // Batch generation (agentic plan + bulk)
+  planBatch: (data) => apiClient.post('/batch/plan', data),
+  runBatch: (data) => apiClient.post('/batch/run', data),
+  getBatchRun: (id) => apiClient.get(`/batch/runs/${id}`),
+  getBatchRuns: (projectId) => apiClient.get('/batch/runs', { params: { project_id: projectId } }),
+
+  // Knowledge base (skills, pillars, brand context)
+  listSkills: () => apiClient.get('/knowledge/skills'),
+  uploadKnowledge: (file) => {
+    const fd = new FormData();
+    fd.append('file', file);
+    return apiClient.post('/knowledge/upload', fd, { headers: { 'Content-Type': 'multipart/form-data' } });
+  },
+  deleteSkill: (id) => apiClient.delete(`/knowledge/skills/${id}`),
+  getPillars: () => apiClient.get('/knowledge/pillars'),
+  updatePillar: (id, data) => apiClient.put(`/knowledge/pillars/${id}`, data),
+  getBrandContexts: () => apiClient.get('/knowledge/brand'),
+  seedKnowledge: () => apiClient.post('/knowledge/seed'),
+
   // Phase 3A Editorial Visual Engine
   getEditorialCompositions: () => apiClient.get('/editorial/compositions'),
   renderEditorial: (data) => apiClient.post('/editorial/render', data),

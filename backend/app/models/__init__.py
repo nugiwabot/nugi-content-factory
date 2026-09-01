@@ -8,6 +8,10 @@ from app.models.asset import Asset
 from app.models.job import GenerationJob
 from app.models.qa_result import QAResult
 from app.models.generation_log import GenerationLog
+from app.models.skill import KnowledgeSkill
+from app.models.pillar import ContentPillar
+from app.models.brand_context import BrandContext
+from app.models.batch import BatchRun, BatchItem
 
 __all__ = [
     "BaseModel",
@@ -19,5 +23,10 @@ __all__ = [
     "Asset",
     "GenerationJob",
     "QAResult",
-    "GenerationLog"
+    "GenerationLog",
+    "KnowledgeSkill",
+    "ContentPillar",
+    "BrandContext",
+    "BatchRun",
+    "BatchItem"
 ]

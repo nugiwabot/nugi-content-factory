@@ -8,6 +8,7 @@ import BriefCreator from './components/BriefCreator';
 import ContentStudio from './components/ContentStudio';
 import BrandProfileManager from './components/BrandProfileManager';
 import JobStatusTracker from './components/JobStatusTracker';
+import KnowledgeManager from './components/KnowledgeManager';
 import SettingsModal from './components/SettingsModal';
 import { api } from './services/api';
 
@@ -148,6 +149,10 @@ export default function App() {
                   setActiveTab('studio');
                 }}
               />
+            )}
+
+            {activeTab === 'knowledge' && (
+              <KnowledgeManager />
             )}
 
             {activeTab === 'brands' && (

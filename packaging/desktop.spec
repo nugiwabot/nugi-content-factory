@@ -10,6 +10,7 @@ root_dir = Path(os.path.abspath(SPECPATH)).parent
 added_files = [
     (str(root_dir / 'frontend' / 'dist'), 'frontend/dist'),
     (str(root_dir / 'assets' / 'brand'), 'assets/brand'),
+    (str(root_dir / 'backend' / 'knowledge'), 'backend/knowledge'),
 ]
 
 hidden_imports = [

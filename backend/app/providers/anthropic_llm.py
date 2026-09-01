@@ -119,3 +119,41 @@ class AnthropicLLMProvider(LLMProvider):
             return self._fallback_provider.generate_content(
                 topic, target_audience, content_pillar, tone_of_voice, brand_context
             )
+
+    def complete(
+        self,
+        system: str,
+        user: str,
+        response_format: Optional[str] = None,
+        max_tokens: int = 2000
+    ) -> str:
+        if not self.api_key:
+            return self._fallback_provider.complete(system, user, response_format, max_tokens)
+
+        try:
+            headers = {
+                "x-api-key": self.api_key,
+                "anthropic-version": "2023-06-01",
+                "content-type": "application/json"
+            }
+            prompt = system if response_format != "json" else f"{system}\n\nRespond ONLY with valid JSON, no markdown code fence."
+            payload = {
+                "model": self.model,
+                "max_tokens": max_tokens,
+                "system": prompt,
+                "messages": [{"role": "user", "content": user}]
+            }
+            endpoint_url = f"{self.base_url}/messages"
+            with httpx.Client(timeout=60.0) as client:
+                response = client.post(endpoint_url, headers=headers, json=payload)
+                response.raise_for_status()
+                data = response.json()
+            text = data["content"][0]["text"]
+            if text.startswith("```"):
+                text = text.split("```", 1)[1].rsplit("```", 1)[0].strip()
+                if text.startswith("json"):
+                    text = text[4:].strip()
+            return text
+        except Exception as e:
+            logger.warning(f"{self.provider_name} complete() failed: {str(e)}. Falling back to mock.")
+            return self._fallback_provider.complete(system, user, response_format, max_tokens)

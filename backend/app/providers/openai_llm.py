@@ -114,3 +114,40 @@ class OpenAILLMProvider(LLMProvider):
             return self._fallback_provider.generate_content(
                 topic, target_audience, content_pillar, tone_of_voice, brand_context
             )
+
+    def complete(
+        self,
+        system: str,
+        user: str,
+        response_format: Optional[str] = None,
+        max_tokens: int = 2000
+    ) -> str:
+        if not self.api_key and "localhost" not in self.base_url and "127.0.0.1" not in self.base_url:
+            return self._fallback_provider.complete(system, user, response_format, max_tokens)
+
+        try:
+            payload: Dict[str, Any] = {
+                "model": self.model,
+                "messages": [
+                    {"role": "system", "content": system},
+                    {"role": "user", "content": user}
+                ],
+                "temperature": 0.7,
+                "max_tokens": max_tokens
+            }
+            if response_format == "json":
+                payload["response_format"] = {"type": "json_object"}
+
+            headers = {"Content-Type": "application/json"}
+            if self.api_key:
+                headers["Authorization"] = f"Bearer {self.api_key}"
+
+            endpoint_url = f"{self.base_url}/chat/completions"
+            with httpx.Client(timeout=60.0) as client:
+                response = client.post(endpoint_url, headers=headers, json=payload)
+                response.raise_for_status()
+                data = response.json()
+            return data["choices"][0]["message"]["content"]
+        except Exception as e:
+            logger.warning(f"{self.provider_name} complete() failed: {str(e)}. Falling back to mock.")
+            return self._fallback_provider.complete(system, user, response_format, max_tokens)

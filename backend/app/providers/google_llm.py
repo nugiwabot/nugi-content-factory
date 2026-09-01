@@ -104,3 +104,32 @@ class GoogleLLMProvider(LLMProvider):
             return self._fallback_provider.generate_content(
                 topic, target_audience, content_pillar, tone_of_voice, brand_context
             )
+
+    def complete(
+        self,
+        system: str,
+        user: str,
+        response_format: Optional[str] = None,
+        max_tokens: int = 2000
+    ) -> str:
+        if not self.api_key:
+            return self._fallback_provider.complete(system, user, response_format, max_tokens)
+
+        try:
+            endpoint_url = f"{self.base_url}/models/{self.model}:generateContent?key={self.api_key}"
+            generation_config: Dict[str, Any] = {"temperature": 0.7}
+            if response_format == "json":
+                generation_config["response_mime_type"] = "application/json"
+            payload = {
+                "system_instruction": {"parts": [{"text": system}]},
+                "contents": [{"role": "user", "parts": [{"text": user}]}],
+                "generationConfig": generation_config
+            }
+            with httpx.Client(timeout=60.0) as client:
+                response = client.post(endpoint_url, json=payload)
+                response.raise_for_status()
+                data = response.json()
+            return data["candidates"][0]["content"]["parts"][0]["text"]
+        except Exception as e:
+            logger.warning(f"{self.provider_name} complete() failed: {str(e)}. Falling back to mock.")
+            return self._fallback_provider.complete(system, user, response_format, max_tokens)

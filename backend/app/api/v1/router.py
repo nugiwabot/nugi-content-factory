@@ -11,6 +11,8 @@ from app.api.v1.brand import router as brand_dna_router
 from app.api.v1.editorial import router as editorial_router
 from app.api.v1.ai_studio import router as ai_studio_router
 from app.api.v1.settings import router as settings_router
+from app.api.v1.knowledge import router as knowledge_router
+from app.api.v1.batch import router as batch_router
 
 api_v1_router = APIRouter(prefix="/api/v1")
 
@@ -26,3 +28,5 @@ api_v1_router.include_router(brand_dna_router)
 api_v1_router.include_router(editorial_router)
 api_v1_router.include_router(ai_studio_router)
 api_v1_router.include_router(settings_router)
+api_v1_router.include_router(knowledge_router)
+api_v1_router.include_router(batch_router)

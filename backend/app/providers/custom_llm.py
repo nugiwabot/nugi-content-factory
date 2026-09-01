@@ -84,3 +84,41 @@ class CustomLLMProvider(LLMProvider):
             return self._fallback_provider.generate_content(
                 topic, target_audience, content_pillar, tone_of_voice, brand_context
             )
+
+    def complete(
+        self,
+        system: str,
+        user: str,
+        response_format: Optional[str] = None,
+        max_tokens: int = 2000
+    ) -> str:
+        try:
+            req_headers = {
+                "Content-Type": "application/json",
+                **self.custom_headers
+            }
+            if self.api_key:
+                req_headers["Authorization"] = f"Bearer {self.api_key}"
+
+            payload = {
+                "system": system,
+                "user": user,
+                "model": self.model,
+                "response_format": response_format,
+                "max_tokens": max_tokens
+            }
+
+            endpoint_url = self.base_url if "/complete" in self.base_url else f"{self.base_url}/complete"
+            with httpx.Client(timeout=60.0) as client:
+                response = client.post(endpoint_url, headers=req_headers, json=payload)
+                response.raise_for_status()
+                data = response.json()
+
+            if isinstance(data, dict) and "text" in data:
+                return data["text"]
+            if isinstance(data, dict) and "content" in data:
+                return data["content"]
+            return data if isinstance(data, str) else json.dumps(data)
+        except Exception as e:
+            logger.warning(f"{self.provider_name} complete() failed: {str(e)}. Falling back to mock.")
+            return self._fallback_provider.complete(system, user, response_format, max_tokens)

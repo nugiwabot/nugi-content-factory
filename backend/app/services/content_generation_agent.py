@@ -18,6 +18,8 @@ from app.schemas.design_spec import DesignSpecification, CompositionType, CTAStr
 from app.services.content_strategy_service import ContentStrategyService
 from app.services.headline_service import HeadlineGenerationService
 from app.services.caption_service import CaptionGenerationService
+from app.services.copywriter_service import CopywriterService
+from app.services.knowledge_service import KnowledgeService
 from app.services.creative_director_service import CreativeDirectorService
 from app.services.asset_compositor_service import AssetCompositorService
 from app.rendering.compositing_engine import ProfessionalCompositingEngine
@@ -44,7 +46,9 @@ class ContentGenerationAgent:
         brief: UserBriefInput,
         db: Optional[Session] = None,
         image_provider_type: str = "flux",
-        debug_safezone: bool = False
+        debug_safezone: bool = False,
+        skill_context: Optional[str] = None,
+        brand_context: Optional[str] = None
     ) -> ContentPackage:
         """
         Executes end-to-end editorial generation pipeline (Phase 3D-3 Safezone Enforcement):
@@ -56,24 +60,44 @@ class ContentGenerationAgent:
         # 1. Content Strategy & Framing
         strat = ContentStrategyService.classify_and_strategize(brief)
 
-        # 2. Headline & Subheadline
-        head_pkg = HeadlineGenerationService.generate_headline_package(
+        # 2-3. Headline, Subheadline, Highlight Words & Caption
+        # Prefer LLM-driven copywriting (skill + brand informed); fall back to
+        # deterministic template services when no live LLM is available.
+        copy = CopywriterService.generate_editorial_copy(
             topic=brief.topic,
-            content_type=strat["content_type"],
-            editorial_angle=strat["editorial_angle"],
-            target_audience=strat["target_audience"]
+            content_type=strat["content_type"].value,
+            target_audience=strat["target_audience"],
+            core_insight=strat["core_insight"],
+            cta_policy=strat["cta_policy"].value,
+            cta_text=strat["cta_text"],
+            skill_context=skill_context,
+            brand_context=brand_context
         )
 
-        # 3. Instagram Article Caption
-        caption = CaptionGenerationService.generate_caption(
-            topic=brief.topic,
-            content_type=strat["content_type"],
-            headline=head_pkg["headline"],
-            core_insight=strat["core_insight"],
-            target_audience=strat["target_audience"],
-            cta_policy=strat["cta_policy"],
-            cta_text=strat["cta_text"]
-        )
+        if copy:
+            headline = copy["headline"]
+            subheadline = copy["subheadline"]
+            highlight_words = copy["highlight_words"]
+            caption = copy["caption"]
+        else:
+            head_pkg = HeadlineGenerationService.generate_headline_package(
+                topic=brief.topic,
+                content_type=strat["content_type"],
+                editorial_angle=strat["editorial_angle"],
+                target_audience=strat["target_audience"]
+            )
+            headline = head_pkg["headline"]
+            subheadline = head_pkg["subheadline"]
+            highlight_words = head_pkg["highlight_words"]
+            caption = CaptionGenerationService.generate_caption(
+                topic=brief.topic,
+                content_type=strat["content_type"],
+                headline=headline,
+                core_insight=strat["core_insight"],
+                target_audience=strat["target_audience"],
+                cta_policy=strat["cta_policy"],
+                cta_text=strat["cta_text"]
+            )
 
         # 4. Assemble Editorial Content Specification
         key_points = [
@@ -95,9 +119,9 @@ class ContentGenerationAgent:
             audience_problem=strat["audience_problem"],
             core_insight=strat["core_insight"],
             editorial_angle=strat["editorial_angle"],
-            headline=head_pkg["headline"],
-            subheadline=head_pkg["subheadline"],
-            highlight_words=head_pkg["highlight_words"],
+            headline=headline,
+            subheadline=subheadline,
+            highlight_words=highlight_words,
             caption=caption,
             key_points=key_points,
             suggested_archetype=strat["suggested_archetype"],
@@ -164,21 +188,21 @@ class ContentGenerationAgent:
                 db_content = Content(
                     id=content_id,
                     project_id=brief.project_id,
-                    content_type=editorial_spec.content_type.value,
                     status="COMPLETED",
                     headline=editorial_spec.headline,
                     hook_text=editorial_spec.subheadline,
-                    caption_body=editorial_spec.caption,
+                    body_caption=editorial_spec.caption,
                     call_to_action=editorial_spec.cta_text or "",
                     hashtags="#Properti #NugiProperti",
-                    design_template_id=design_spec.template_id,
-                    primary_accent_color=design_spec.accent_color_hex,
-                    visual_prompt=art_direction.image_prompt,
-                    custom_metadata={
+                    visual_concept_prompt=art_direction.image_prompt,
+                    template_id=design_spec.template_id,
+                    metadata_json={
+                        "content_type": editorial_spec.content_type.value,
                         "archetype": art_direction.archetype.value,
                         "cta_policy": editorial_spec.cta_policy.value,
                         "highlight_words": editorial_spec.highlight_words,
                         "target_audience": editorial_spec.target_audience,
+                        "primary_accent_color": design_spec.accent_color_hex,
                         "visual_story": concept.visual_story
                     }
                 )
@@ -189,7 +213,8 @@ class ContentGenerationAgent:
                     project_id=brief.project_id,
                     content_id=content_id,
                     asset_type="FINAL_IMAGE",
-                    storage_path=asset_path,
+                    file_path=asset_path,
+                    file_url=asset_url,
                     mime_type="image/png",
                     width=design_spec.width,
                     height=design_spec.height,
@@ -413,7 +438,22 @@ class ContentGenerationAgent:
             project_id=req.project_id
         )
 
-        pkg = self.generate_full_package(brief=brief, db=db)
+        # Inject brand context + relevant skills (knowledge base) into the generation.
+        skill_context = ""
+        brand_context = ""
+        if db:
+            try:
+                brand_context = KnowledgeService.get_brand_context(db)
+                skill_context = KnowledgeService.retrieve_relevant_skills(db, brief.topic)
+            except Exception as e:
+                logger.warning(f"Knowledge retrieval skipped: {str(e)}")
+
+        pkg = self.generate_full_package(
+            brief=brief,
+            db=db,
+            skill_context=skill_context,
+            brand_context=brand_context
+        )
         headline = pkg.editorial_spec.headline
 
         reply_text = (

@@ -1,12 +1,13 @@
 import React from 'react';
-import { LayoutGrid, FileText, Image as ImageIcon, Palette, Clock, Layers, Sparkles } from 'lucide-react';
+import { LayoutGrid, FileText, Image as ImageIcon, Palette, Clock, Layers, Sparkles, BookOpen } from 'lucide-react';
 
 export default function Sidebar({ activeTab, setActiveTab }) {
   const menuItems = [
-    { id: 'ai_studio', label: 'AI Agent Copilot', icon: Sparkles, badge: 'Chat Mode' },
+    { id: 'ai_studio', label: 'AI Agent Copilot', icon: Sparkles, badge: 'Agent' },
     { id: 'design_studio', label: 'Design Engine (1080x1350)', icon: Layers },
     { id: 'studio', label: 'Content Gallery', icon: ImageIcon },
     { id: 'briefs', label: 'AI Brief Creator', icon: FileText },
+    { id: 'knowledge', label: 'Knowledge Base', icon: BookOpen, badge: 'Skill' },
     { id: 'projects', label: 'Project Workspaces', icon: LayoutGrid },
     { id: 'brands', label: 'Brand Profiles', icon: Palette },
     { id: 'jobs', label: 'Job Tracker', icon: Clock },

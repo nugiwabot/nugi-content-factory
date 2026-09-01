@@ -56,6 +56,21 @@ class LLMProvider(ABC):
         """Generates structured content output based on input brief."""
         pass
 
+    def complete(
+        self,
+        system: str,
+        user: str,
+        response_format: Optional[str] = None,
+        max_tokens: int = 2000
+    ) -> str:
+        """
+        Generic chat-completion-style reasoning method used by the agentic planner
+        and copywriter. Returns raw text; when response_format='json' the text should
+        be pure JSON. Providers override this; the base returns an empty fallback.
+        """
+        logger.warning(f"{self.provider_name} does not implement complete(); returning empty fallback.")
+        return "{}" if response_format == "json" else ""
+
     def test_connection(self) -> Dict[str, Any]:
         """Tests connectivity and authentication with provider endpoint."""
         try:

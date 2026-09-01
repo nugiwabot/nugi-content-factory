@@ -41,9 +41,24 @@ async def lifespan(app: FastAPI):
     setup_logging()
     logger.info(f"Starting {settings.APP_NAME} (v{settings.APP_VERSION}) on {settings.HOST}:{settings.PORT}")
     init_db()
+    _seed_knowledge_base()
     yield
     # Shutdown
     logger.info(f"Shutting down {settings.APP_NAME} gracefully.")
+
+
+def _seed_knowledge_base() -> None:
+    """Idempotently seeds skills, pillars, and brand context on startup."""
+    try:
+        from app.database import SessionLocal
+        from app.services.knowledge_service import KnowledgeService
+        db = SessionLocal()
+        try:
+            KnowledgeService.seed_defaults(db)
+        finally:
+            db.close()
+    except Exception:
+        logger.exception("Knowledge base seeding failed (non-fatal).")
 
 
 def create_app() -> FastAPI:

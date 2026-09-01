@@ -127,3 +127,44 @@ class OpenRouterLLMProvider(LLMProvider):
             return self._fallback_provider.generate_content(
                 topic, target_audience, content_pillar, tone_of_voice, brand_context
             )
+
+    def complete(
+        self,
+        system: str,
+        user: str,
+        response_format: Optional[str] = None,
+        max_tokens: int = 2000
+    ) -> str:
+        if not self.api_key:
+            return self._fallback_provider.complete(system, user, response_format, max_tokens)
+
+        try:
+            payload: Dict[str, Any] = {
+                "model": self.model,
+                "messages": [
+                    {"role": "system", "content": system},
+                    {"role": "user", "content": user}
+                ],
+                "temperature": 0.7,
+                "max_tokens": max_tokens
+            }
+            if response_format == "json":
+                payload["response_format"] = {"type": "json_object"}
+
+            headers = {
+                "Authorization": f"Bearer {self.api_key}",
+                "HTTP-Referer": "http://localhost:5173",
+                "X-Title": "Nugi Content Factory",
+                "Content-Type": "application/json"
+            }
+            endpoint = f"{self.base_url}/chat/completions"
+            with httpx.Client(timeout=60.0) as client:
+                resp = client.post(endpoint, json=payload, headers=headers)
+                if resp.status_code != 200:
+                    logger.warning(f"OpenRouter complete() status {resp.status_code}: {resp.text[:200]}")
+                    return self._fallback_provider.complete(system, user, response_format, max_tokens)
+                data = resp.json()
+            return data.get("choices", [{}])[0].get("message", {}).get("content", "")
+        except Exception as e:
+            logger.warning(f"OpenRouter complete() failed: {str(e)}. Falling back to mock.")
+            return self._fallback_provider.complete(system, user, response_format, max_tokens)
