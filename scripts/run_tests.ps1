@@ -10,7 +10,7 @@ Set-Location $BackendPath
 python -m pytest -v --tb=short
 
 if ($LASTEXITCODE -eq 0) {
-    Write-Host "`n✔ ALL TESTS PASSED SUCCESSFULLY!" -ForegroundColor Green
+    Write-Host "`n[SUCCESS] ALL TESTS PASSED SUCCESSFULLY!" -ForegroundColor Green
 } else {
-    Write-Host "`n❌ TEST SUITE FAILED." -ForegroundColor Red
+    Write-Host "`n[FAILURE] TEST SUITE FAILED." -ForegroundColor Red
 }

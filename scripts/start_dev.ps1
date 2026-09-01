@@ -16,7 +16,7 @@ $BackendProcess = Start-Process -FilePath "python" -ArgumentList "-m uvicorn app
 Write-Host "[2/2] Starting Vite React Frontend on http://localhost:5173..." -ForegroundColor Yellow
 $FrontendProcess = Start-Process -FilePath "npm" -ArgumentList "run dev" -WorkingDirectory $FrontendPath -PassThru
 
-Write-Host "`n✔ Development servers launched successfully!" -ForegroundColor Green
+Write-Host "`n[READY] Development servers launched successfully!" -ForegroundColor Green
 Write-Host "• Frontend UI: http://localhost:5173" -ForegroundColor White
 Write-Host "• Backend API: http://127.0.0.1:8000" -ForegroundColor White
 Write-Host "• Swagger Docs: http://127.0.0.1:8000/docs" -ForegroundColor White
