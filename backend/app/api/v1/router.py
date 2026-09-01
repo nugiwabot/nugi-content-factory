@@ -6,6 +6,8 @@ from app.api.v1.briefs import router as briefs_router
 from app.api.v1.content import router as content_router
 from app.api.v1.jobs import router as jobs_router
 from app.api.v1.assets import router as assets_router
+from app.api.v1.templates import router as templates_router
+from app.api.v1.brand import router as brand_dna_router
 
 api_v1_router = APIRouter(prefix="/api/v1")
 
@@ -16,3 +18,5 @@ api_v1_router.include_router(briefs_router)
 api_v1_router.include_router(content_router)
 api_v1_router.include_router(jobs_router)
 api_v1_router.include_router(assets_router)
+api_v1_router.include_router(templates_router)
+api_v1_router.include_router(brand_dna_router)

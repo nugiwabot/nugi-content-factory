@@ -157,6 +157,12 @@ nugi-content-factory/
 ---
 
 ## 10. Roadmap & Status
-* **Phase 1: Foundation Architecture:** ✅ **COMPLETED (100% Test Passed)**
-* **Phase 2: Live AI Providers (OpenAI & Flux) & Batch Generation Mode:** *Pending Next Phase*
-* **Phase 3: Windows Desktop Packaging (`Setup.exe`):** *Documented in `docs/WINDOWS_PACKAGING_PLAN.md`*
+* **Phase 1: Foundation Architecture:** ✅ **COMPLETED (17/17 Tests Passed)**
+* **Phase 2: Brand & Design Intelligence:** ✅ **COMPLETED (35/35 Tests Passed)**
+  - NugiProperti Design DNA & Semantic Tokens (`ColorSystem`, `TypographySystem`, `SpacingSystem`)
+  - 6 Data-Driven Templates (`01_PROPERTY_PROBLEM` to `06_CALL_TO_ACTION`)
+  - 1080x1350 Instagram Portrait Feed & 1080x1080 Rendering with Word Highlighting
+  - Automated Visual QA Scoring Engine (0-100)
+  - Controlled Preview Studio UI
+* **Phase 3: Live AI Providers (OpenAI & Flux) & Content Generation Agent:** *Pending Next Phase*
+* **Phase 4: Windows Desktop Packaging (`Setup.exe`):** *Documented in `docs/WINDOWS_PACKAGING_PLAN.md`*

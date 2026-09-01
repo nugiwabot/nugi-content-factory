@@ -21,6 +21,14 @@ export const api = {
   // System Health
   getHealth: () => apiClient.get('/health'),
 
+  // Brand DNA
+  getBrandDna: () => apiClient.get('/brand/nugi-properti'),
+
+  // Templates & Design Brain
+  getTemplates: () => apiClient.get('/templates'),
+  getTemplate: (id) => apiClient.get(`/templates/${id}`),
+  renderTemplate: (data) => apiClient.post('/templates/render', data),
+
   // Projects
   getProjects: () => apiClient.get('/projects'),
   createProject: (data) => apiClient.post('/projects', data),

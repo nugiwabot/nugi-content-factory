@@ -15,6 +15,16 @@ class DeterministicRenderingEngine:
     def __init__(self):
         self.default_width = 1080
         self.default_height = 1080
+        from app.rendering.template_renderer import TemplateRenderer
+        self.template_renderer = TemplateRenderer()
+
+    def render_from_spec(
+        self,
+        spec,
+        background_bytes: Optional[bytes] = None
+    ) -> Tuple[bytes, Dict[str, Any]]:
+        """Renders graphic from a formal DesignSpecification object."""
+        return self.template_renderer.render_spec(spec, background_bytes)
 
     def hex_to_rgb(self, hex_code: str, fallback: Tuple[int, int, int] = (15, 23, 42)) -> Tuple[int, int, int]:
         try:

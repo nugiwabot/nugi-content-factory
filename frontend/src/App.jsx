@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import Header from './components/Header';
 import Sidebar from './components/Sidebar';
+import DesignPreviewStudio from './components/DesignPreviewStudio';
 import ProjectView from './components/ProjectView';
 import BriefCreator from './components/BriefCreator';
 import ContentStudio from './components/ContentStudio';
@@ -10,7 +11,7 @@ import SettingsModal from './components/SettingsModal';
 import { api } from './services/api';
 
 export default function App() {
-  const [activeTab, setActiveTab] = useState('studio');
+  const [activeTab, setActiveTab] = useState('design_studio');
   const [projects, setProjects] = useState([]);
   const [currentProject, setCurrentProject] = useState(null);
   const [brands, setBrands] = useState([]);
@@ -115,6 +116,10 @@ export default function App() {
           </div>
         ) : (
           <>
+            {activeTab === 'design_studio' && (
+              <DesignPreviewStudio />
+            )}
+
             {activeTab === 'studio' && (
               <ContentStudio 
                 contents={contents} 
