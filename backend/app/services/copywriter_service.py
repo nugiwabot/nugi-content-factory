@@ -34,6 +34,10 @@ class CopywriterService:
             "WAJIB ikuti gaya & aturan berikut (jika tersedia di bawah):\n\n"
             f"{skill_context or ''}\n\n"
             f"{brand_context or ''}\n\n"
+            "ATURAN KEBENARAN KONTEN:\n"
+            "- Fakta bisnis (nama brand, jasa, harga, klaim, angka, studi kasus) HANYA boleh berasal dari konteks di atas.\n"
+            "- DILARANG mengarang jasa, harga, angka hasil, klien, atau klaim yang tidak ada di konteks.\n"
+            "- Jangan menyebut nama klien nyata atau data privat.\n"
             "Keluarkan HANYA JSON murni (tanpa markdown fence) dengan key:\n"
             '{"headline": "judul visual 2-4 kata ALL CAPS", '
             '"subheadline": "1 kalimat pendukung", '

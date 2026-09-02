@@ -147,19 +147,17 @@ class CreativeDirectorService:
         concept = CreativeDirectorService.create_visual_concept(spec)
         colors = NUGI_PROPERTI_BRAND_PROFILE.colors
 
-        accent_hex = "#8b5cf6"  # Signature Electric Violet / Purple (Akademi Kripto DNA)
+        # Brand-guided accent per content intent (Nugi Properti Editorial DNA).
         if spec.content_type == ContentType.PROPERTY_PROBLEM:
-            accent_hex = "#8b5cf6"  # Vibrant purple
-        elif spec.content_type in (ContentType.PROPERTY_LISTICLE, ContentType.NUMBER_LIST):
-            accent_hex = "#8b5cf6"  # Vibrant purple
-        elif spec.content_type == ContentType.PROPERTY_INSIGHT:
-            accent_hex = "#8b5cf6"
+            accent_hex = colors.accent_rose
+        elif spec.content_type in (ContentType.PROPERTY_INSIGHT, ContentType.PROPERTY_LISTICLE, ContentType.NUMBER_LIST, ContentType.PROPERTY_SHOWCASE):
+            accent_hex = colors.accent_gold
         elif spec.content_type in (ContentType.PROPERTY_CASE_STUDY, ContentType.CASE_STUDY, ContentType.DATA_EDITORIAL):
-            accent_hex = "#8b5cf6"
-        elif spec.content_type == ContentType.PROPERTY_SHOWCASE:
-            accent_hex = "#8b5cf6"
+            accent_hex = colors.accent_emerald
         elif spec.content_type in (ContentType.PROPERTY_OPINION, ContentType.OPINION):
-            accent_hex = "#8b5cf6"
+            accent_hex = colors.accent_neon_violet
+        else:
+            accent_hex = colors.accent_primary
 
         # Phase 3D-2 Overhauled Flux Prompt Template
         image_prompt = (
@@ -205,7 +203,7 @@ class CreativeDirectorService:
             variant_name="Variant A: Cinematic Hero",
             concept=concept_a,
             composition_plan=plan_a,
-            visual_qa_score=100
+            visual_qa_score=None
         ))
 
         # Variant B: Minimalist Authority (Monochrome Obsidian)
@@ -219,7 +217,7 @@ class CreativeDirectorService:
             variant_name="Variant B: Minimalist Authority",
             concept=concept_b,
             composition_plan=plan_b,
-            visual_qa_score=98
+            visual_qa_score=None
         ))
 
         # Variant C: Premium Gold Composite
@@ -232,7 +230,7 @@ class CreativeDirectorService:
             variant_name="Variant C: Layered Composite",
             concept=concept_c,
             composition_plan=plan_c,
-            visual_qa_score=100
+            visual_qa_score=None
         ))
 
         return variants
@@ -311,3 +309,4 @@ class CreativeDirectorService:
             brand_name="NugiProperti",
             show_logo=True
         )
+

@@ -4,7 +4,7 @@ from app.schemas.editorial_agent import ContentType
 
 class HeadlineGenerationService:
     """
-    Generates high-impact, editorial Indonesian headlines (2-3 lines, Akademi Kripto style),
+    Generates high-impact, editorial Indonesian headlines (2-3 lines, NugiProperti Editorial style),
     concise supporting subheadlines, and extracts exact highlight words for accent styling.
     """
     @staticmethod

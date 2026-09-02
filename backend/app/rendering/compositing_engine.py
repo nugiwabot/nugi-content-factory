@@ -38,7 +38,7 @@ from app.core.errors import RenderingError
 class ProfessionalCompositingEngine:
     """
     13-Layer Professional Editorial Compositing Engine (Phase 3D-2).
-    Implements Akademi Kripto visual editorial DNA:
+    Implements NugiProperti Editorial visual editorial DNA:
     - Seamless dark gradient scrim across the lower canvas for maximum readability.
     - Solid vibrant neon highlight strips/pills directly behind key headline punchlines.
     - Crisp white extra-bold typography (68-84px) with maximum contrast.
@@ -240,7 +240,7 @@ class ProfessionalCompositingEngine:
                 subj_img = Image.open(io.BytesIO(subject_bytes)).convert("RGBA")
                 canvas.paste(subj_img, (int(width * 0.45), int(SAFEZONE_TOP + 40)), subj_img)
 
-            # LAYER 4: Seamless Bottom Dark Gradient Scrim (Akademi Kripto Style)
+            # LAYER 4: Seamless Bottom Dark Gradient Scrim (NugiProperti Editorial Style)
             canvas = LayoutEngine.draw_bottom_gradient_scrim(
                 canvas=canvas,
                 start_y=680,
@@ -320,7 +320,7 @@ class ProfessionalCompositingEngine:
             }
 
             # ==================================================================
-            # LOWER SAFEZONE: Akademi Kripto Headline with Solid Highlight Strip
+            # LOWER SAFEZONE: NugiProperti Editorial Headline with Solid Highlight Strip
             # ==================================================================
             wrapped_headline = LayoutEngine.wrap_headline_punchy(actual_spec.headline, max_chars_per_line=22)
             
@@ -348,7 +348,7 @@ class ProfessionalCompositingEngine:
             headline_y = min(target_max_y - hl_h, 1140 - hl_h)
             headline_y = max(SAFEZONE_TOP + 280, headline_y)
 
-            # Render Headline with Akademi Kripto Solid Highlight Strip
+            # Render Headline with NugiProperti Editorial Solid Highlight Strip
             end_hl_y, hl_bboxes = LayoutEngine.draw_editorial_headline_with_strips(
                 canvas=canvas,
                 lines=wrapped_headline,

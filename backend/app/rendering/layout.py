@@ -34,7 +34,7 @@ class LayoutEngine:
     @staticmethod
     def wrap_headline_punchy(text: str, max_chars_per_line: int = 22) -> List[str]:
         """
-        Wraps headlines into short, punchy 2-4 lines (Akademi Kripto style).
+        Wraps headlines into short, punchy 2-4 lines (NugiProperti Editorial style).
         Avoids single-word orphan lines.
         """
         if not text:
@@ -226,7 +226,7 @@ class LayoutEngine:
         accent_rgb: Tuple[int, int, int]
     ) -> Tuple[int, Dict[str, Dict[str, int]]]:
         """
-        Renders headline with Akademi Kripto aesthetic:
+        Renders headline with NugiProperti Editorial aesthetic:
         - Regular lines in pure bold white.
         - Highlight line on top of a solid vibrant neon background strip/pill.
         - Perfectly centered mathematically.
@@ -319,7 +319,7 @@ class LayoutEngine:
         dark_rgb: Tuple[int, int, int] = (4, 7, 17)
     ) -> Image.Image:
         """
-        Creates a seamless, silky dark gradient scrim across the lower canvas (Akademi Kripto style).
+        Creates a seamless, silky dark gradient scrim across the lower canvas (NugiProperti Editorial style).
         Fades from 0% opacity to 100% solid dark at the bottom.
         """
         width, height = canvas.size

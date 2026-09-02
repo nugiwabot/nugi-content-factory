@@ -164,6 +164,6 @@ class VisualVariant(BaseModel):
     composition_plan: CompositionPlan
     rendered_asset_path: Optional[str] = None
     rendered_asset_url: Optional[str] = None
-    visual_qa_score: int = Field(default=100)
+    visual_qa_score: Optional[int] = Field(default=None, description="Real QA score, only populated after a render exists")
 
     model_config = ConfigDict(from_attributes=True)
