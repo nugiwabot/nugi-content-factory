@@ -85,6 +85,7 @@ class BatchGenerationService:
             brand_context = KnowledgeService.get_brand_context(db)
             items = db.query(BatchItem).filter(BatchItem.batch_run_id == run.id).order_by(BatchItem.sort_order).all()
             total = max(len(items), 1)
+            total_cost_usd = 0.0
 
             for idx, item in enumerate(items):
                 try:
@@ -109,6 +110,9 @@ class BatchGenerationService:
                         skill_context=skill_context,
                         brand_context=brand_context
                     )
+
+                    if pkg.estimated_cost_usd is not None:
+                        total_cost_usd += pkg.estimated_cost_usd
 
                     item.content_type = pkg.content_type.value
                     item.headline = pkg.editorial_spec.headline
@@ -138,7 +142,8 @@ class BatchGenerationService:
                 "mode": run.mode,
                 "goal": run.goal,
                 "total_items": run.total_items,
-                "completed_items": run.completed_items
+                "completed_items": run.completed_items,
+                "estimated_cost_usd": round(total_cost_usd, 6)
             }
             db.commit()
 

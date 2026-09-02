@@ -138,6 +138,8 @@ class ContentPackage(BaseModel):
     rendered_asset_path: Optional[str] = None
     rendered_asset_url: Optional[str] = None
     visual_qa: Optional[VisualQAResult] = None
+    estimated_cost_usd: Optional[float] = None
+    usage: Dict[str, Any] = Field(default_factory=dict, description="Provider usage & estimated cost details")
 
     model_config = ConfigDict(from_attributes=True)
 

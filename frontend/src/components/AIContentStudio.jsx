@@ -626,7 +626,7 @@ export default function AIContentStudio({ currentProject }) {
                 <span>{batchError}</span>
               </div>
             )}
-            <BatchResultsGallery batchRun={batchRun} onRefresh={() => batchRunId && null} />
+            <BatchResultsGallery batchRun={batchRun} onRefresh={() => { if (batchRun?.id) api.getBatchRun(batchRun.id).then(setBatchRun).catch(() => {}); }} />
           </div>
         )}
 
@@ -766,3 +766,4 @@ export default function AIContentStudio({ currentProject }) {
     </div>
   );
 }
+

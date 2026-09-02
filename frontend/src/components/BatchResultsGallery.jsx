@@ -24,20 +24,23 @@ export default function BatchResultsGallery({ batchRun, onRefresh }) {
 
   return (
     <div className="card" style={{ margin: '16px 0 24px 0', padding: '18px' }}>
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '14px' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-          {isRunning ? <Loader2 size={18} className="spin" color="#c084fc" /> : <CheckCircle2 size={18} color="var(--accent-emerald)" />}
-          <span style={{ fontWeight: 700, color: '#f8fafc' }}>
-            Batch {statusLabel[batchRun.status] || batchRun.status}
-            <span style={{ color: 'var(--text-dim)', fontWeight: 500 }}>
-              {' · '}{batchRun.completed_items}/{batchRun.total_items} konten
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '14px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
+            {isRunning ? <Loader2 size={18} className="spin" color="#c084fc" /> : <CheckCircle2 size={18} color="var(--accent-emerald)" />}
+            <span style={{ fontWeight: 700, color: '#f8fafc' }}>
+              Batch {statusLabel[batchRun.status] || batchRun.status}
+              <span style={{ color: 'var(--text-dim)', fontWeight: 500 }}>
+                {' · '}{batchRun.completed_items}/{batchRun.total_items} konten
+              </span>
             </span>
-          </span>
+            {!isRunning && batchRun.summary?.estimated_cost_usd != null && batchRun.summary?.estimated_cost_usd > 0 && (
+              <span className="badge badge-info">Est. biaya: ${Number(batchRun.summary.estimated_cost_usd).toFixed(4)}</span>
+            )}
+          </div>
+          <button className="btn btn-secondary btn-sm" onClick={onRefresh} disabled={isRunning}>
+            {isRunning ? 'Memproses...' : 'Refresh'}
+          </button>
         </div>
-        <button className="btn btn-secondary btn-sm" onClick={onRefresh} disabled={isRunning}>
-          {isRunning ? 'Memproses...' : 'Refresh'}
-        </button>
-      </div>
 
       {items.length === 0 ? (
         <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}>Menunggu hasil generasi...</p>

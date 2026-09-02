@@ -87,5 +87,24 @@ class CopywriterService:
             "headline": headline,
             "subheadline": subheadline,
             "highlight_words": highlight_words if isinstance(highlight_words, list) else [],
-            "caption": caption
+            "caption": caption,
+            "usage": CopywriterService._usage_from_llm(llm, system_prompt, user_prompt, raw),
+        }
+
+    @staticmethod
+    def _usage_from_llm(llm, system_prompt: str, user_prompt: str, raw_output: str) -> dict:
+        """Best-effort usage/estimated-cost report for a live provider call."""
+        from app.core.pricing import estimate_llm_cost
+        provider = getattr(llm, "provider_name", None)
+        model = getattr(llm, "model", None)
+        if not provider or not model or "mock" in provider.lower():
+            return {}
+        tokens_in_est = max(len(system_prompt) + len(user_prompt), 1) // 4
+        tokens_out_est = max(len(raw_output or ""), 1) // 4
+        return {
+            "provider": provider,
+            "model": model,
+            "tokens_in": tokens_in_est,
+            "tokens_out": tokens_out_est,
+            "estimated_cost_usd": estimate_llm_cost(model, tokens_in_est, tokens_out_est),
         }

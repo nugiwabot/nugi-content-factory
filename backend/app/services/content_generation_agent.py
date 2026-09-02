@@ -27,9 +27,11 @@ from app.rendering.editorial_renderer import EditorialRenderer
 from app.services.visual_qa import VisualQAService
 from app.providers.factory import ProviderFactory
 from app.providers.retry import call_with_retry
+from app.core.pricing import estimate_image_cost
 from app.models.content import Content
 from app.models.brief import ContentBrief
 from app.models.asset import Asset
+from app.models.generation_log import GenerationLog
 from app.core.logging import logger
 
 
@@ -102,6 +104,7 @@ class ContentGenerationAgent:
             )
 
         # 4. Assemble Editorial Content Specification
+        llm_usage = (copy or {}).get("usage") or {}
         key_points = [
             "Respon di atas 15 menit menurunkan closing 80%",
             "Template chat kaku tanpa personalisasi prospek",
@@ -158,6 +161,23 @@ class ContentGenerationAgent:
             height=design_spec.height
         )
 
+        # Usage / estimated cost tracking (best-effort, never blocks generation).
+        llm_cost = llm_usage.get("estimated_cost_usd")
+        image_cost = estimate_image_cost(bg_output.model) if bg_output.model else None
+        total_cost = None
+        if llm_cost is not None or image_cost is not None:
+            total_cost = round((llm_cost or 0) + (image_cost or 0), 6)
+        usage_report = {
+            "llm": llm_usage,
+            "image": {
+                "provider": bg_output.provider,
+                "model": bg_output.model,
+                "estimated_cost_usd": image_cost,
+                "latency_ms": bg_output.latency_ms
+            },
+            "estimated_cost_usd_total": total_cost,
+        }
+
         # 8. 13-Layer Compositing Engine Execution
         design_spec.background_image_bytes = bg_output.image_bytes
         rendered_bytes, meta = self.compositing_engine.composite_full_artwork(
@@ -206,7 +226,9 @@ class ContentGenerationAgent:
                         "highlight_words": editorial_spec.highlight_words,
                         "target_audience": editorial_spec.target_audience,
                         "primary_accent_color": design_spec.accent_color_hex,
-                        "visual_story": concept.visual_story
+                        "visual_story": concept.visual_story,
+                        "usage": usage_report,
+                        "estimated_cost_usd": total_cost
                     }
                 )
                 db.add(db_content)
@@ -225,6 +247,14 @@ class ContentGenerationAgent:
                 )
                 db.add(db_asset)
                 db.commit()
+
+                self._write_generation_logs(
+                    db=db,
+                    content_id=content_id,
+                    usage=usage_report,
+                    prompt_text=art_direction.image_prompt,
+                    topic=brief.topic
+                )
             except Exception as dbe:
                 db.rollback()
                 logger.error(f"DB persistence failed for content generation: {str(dbe)}")
@@ -243,8 +273,49 @@ class ContentGenerationAgent:
             active_variant=variants[0].variant_name,
             rendered_asset_path=asset_path,
             rendered_asset_url=asset_url,
-            visual_qa=visual_qa
+            visual_qa=visual_qa,
+            estimated_cost_usd=total_cost,
+            usage=usage_report
         )
+
+    def _write_generation_logs(
+        self,
+        db: Session,
+        content_id: str,
+        usage: Dict[str, Any],
+        prompt_text: str,
+        topic: str,
+    ) -> None:
+        """Persists best-effort provider usage/audit logs. Never fails generation."""
+        try:
+            llm = usage.get("llm") or {}
+            if llm.get("provider") and "mock" not in str(llm.get("provider", "")).lower():
+                db.add(GenerationLog(
+                    content_id=content_id,
+                    provider_type="LLM",
+                    provider_name=str(llm.get("provider"))[:50],
+                    model_name=str(llm.get("model") or "")[:100],
+                    prompt_text=f"Topic: {topic}",
+                    response_payload=llm,
+                    status="SUCCESS"
+                ))
+
+            img = usage.get("image") or {}
+            if img.get("provider") and "mock" not in str(img.get("provider", "")).lower():
+                db.add(GenerationLog(
+                    content_id=content_id,
+                    provider_type="ImageGenerator",
+                    provider_name=str(img.get("provider"))[:50],
+                    model_name=str(img.get("model") or "")[:100],
+                    prompt_text=prompt_text,
+                    response_payload=img,
+                    latency_ms=img.get("latency_ms"),
+                    status="SUCCESS"
+                ))
+            db.commit()
+        except Exception as e:
+            db.rollback()
+            logger.error(f"Failed to write generation usage logs: {str(e)}")
 
     def regenerate_headline(
         self,
