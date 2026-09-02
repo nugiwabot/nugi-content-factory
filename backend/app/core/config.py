@@ -88,6 +88,12 @@ class Settings(BaseSettings):
     FLUX_MODEL: str = Field(default="flux-2-klein-9b", description="Flux Model: flux-2-klein-9b, flux-1.1-pro, flux-dev, flux-schnell")
     FLUX_BASE_URL: str = Field(default="https://api.bfl.ai/v1", description="Flux API Gateway Base URL")
 
+    # Knowledge Source (read-only path to the business knowledge repository)
+    KNOWLEDGE_SOURCE_PATH: Optional[str] = Field(
+        default=None,
+        description="Filesystem path to the business knowledge repo (freelance-nugi-software-engineer). Auto-detected as sibling when unset."
+    )
+
     # Canvas & Rendering System Defaults
     DEFAULT_IMAGE_WIDTH: int = Field(default=1080, description="Default canvas width in pixels")
     DEFAULT_IMAGE_HEIGHT: int = Field(default=1350, description="Default canvas height in pixels")
@@ -105,6 +111,23 @@ class Settings(BaseSettings):
     @property
     def is_production(self) -> bool:
         return self.APP_ENV.lower() == "production" or getattr(sys, "frozen", False)
+
+    @property
+    def knowledge_source_dir(self) -> Optional[Path]:
+        """
+        Resolves the read-only business knowledge repository directory.
+        Explicit KNOWLEDGE_SOURCE_PATH wins; otherwise the sibling folder of the
+        application repo (freelance-nugi-software-engineer) is auto-detected.
+        """
+        if self.KNOWLEDGE_SOURCE_PATH:
+            p = Path(self.KNOWLEDGE_SOURCE_PATH).expanduser()
+            if p.is_dir():
+                return p.resolve()
+
+        sibling = Path(__file__).resolve().parents[3].parent / "freelance-nugi-software-engineer"
+        if sibling.is_dir():
+            return sibling.resolve()
+        return None
 
     @property
     def user_data_dir(self) -> Path:

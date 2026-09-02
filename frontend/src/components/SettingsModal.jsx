@@ -31,13 +31,40 @@ export default function SettingsModal({ isOpen, onClose, healthStatus }) {
   const [testing, setTesting] = useState(false);
   const [testResult, setTestResult] = useState(null);
 
+  // Knowledge source
+  const [knowledgeStatus, setKnowledgeStatus] = useState(null);
+  const [knowledgePath, setKnowledgePath] = useState('');
+  const [knowledgeMsg, setKnowledgeMsg] = useState(null);
+
   useEffect(() => {
     if (isOpen) {
       loadSettings();
+      loadKnowledgeSource();
       setTestResult(null);
       setSaveSuccess(false);
     }
   }, [isOpen]);
+
+  const loadKnowledgeSource = async () => {
+    try {
+      const data = await api.getKnowledgeSource();
+      setKnowledgeStatus(data);
+      setKnowledgePath(data.source_path || '');
+    } catch (err) {
+      console.error('Failed to load knowledge source:', err);
+    }
+  };
+
+  const saveKnowledgeSource = async () => {
+    try {
+      setKnowledgeMsg(null);
+      await api.setKnowledgeSource(knowledgePath.trim());
+      await loadKnowledgeSource();
+      setKnowledgeMsg({ ok: true, text: 'Sumber pengetahuan berhasil disimpan & diindeks ulang.' });
+    } catch (err) {
+      setKnowledgeMsg({ ok: false, text: err.message || 'Gagal menyimpan sumber pengetahuan.' });
+    }
+  };
 
   const loadSettings = async () => {
     try {
@@ -304,10 +331,59 @@ export default function SettingsModal({ isOpen, onClose, healthStatus }) {
               </p>
             </div>
 
+            <div className="card" style={{ background: 'rgba(0,0,0,0.3)', padding: '12px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
+                <Zap size={15} color="var(--accent-violet)" />
+                <strong style={{ fontSize: '0.85rem' }}>Knowledge Source (freelance-nugi-software-engineer)</strong>
+              </div>
+              <p style={{ fontSize: '0.74rem', color: 'var(--text-muted)', margin: '4px 0 8px' }}>
+                Folder repo bisnis yang dibaca sebagai sumber pengetahuan konten. File privat (data sales, keuangan) otomatis dikecualikan.
+              </p>
+              <input
+                type="text"
+                className="form-input"
+                placeholder="C:\Users\...\freelance-nugi-software-engineer"
+                value={knowledgePath}
+                onChange={(e) => setKnowledgePath(e.target.value)}
+              />
+              <div style={{ display: 'flex', gap: '8px', alignItems: 'center', marginTop: '8px' }}>
+                <button className="btn btn-secondary btn-sm" onClick={saveKnowledgeSource} disabled={saving}>
+                  Simpan & Indeks
+                </button>
+                <button
+                  className="btn btn-secondary btn-sm"
+                  onClick={async () => {
+                    try {
+                      const data = await api.rescanKnowledge();
+                      setKnowledgeStatus(data);
+                      setKnowledgeMsg({ ok: true, text: 'Sumber pengetahuan diindeks ulang.' });
+                    } catch (err) {
+                      setKnowledgeMsg({ ok: false, text: err.message });
+                    }
+                  }}
+                >
+                  <RefreshCw size={13} /> Rescan
+                </button>
+                {knowledgeStatus?.active && (
+                  <span style={{ fontSize: '0.72rem', color: 'var(--accent-emerald)' }}>
+                    ✓ {knowledgeStatus.core_docs} core · {knowledgeStatus.supporting_docs} pendukung
+                  </span>
+                )}
+                {knowledgeStatus && !knowledgeStatus.active && (
+                  <span style={{ fontSize: '0.72rem', color: 'var(--accent-rose)' }}>Sumber tidak ditemukan</span>
+                )}
+              </div>
+              {knowledgeMsg && (
+                <p style={{ fontSize: '0.74rem', margin: '6px 0 0', color: knowledgeMsg.ok ? 'var(--accent-emerald)' : 'var(--accent-rose)' }}>
+                  {knowledgeMsg.text}
+                </p>
+              )}
+            </div>
+
             <div style={{ display: 'flex', gap: '8px', alignItems: 'flex-start', background: 'rgba(56, 189, 248, 0.08)', padding: '10px', borderRadius: 'var(--radius-md)', border: '1px solid rgba(56, 189, 248, 0.2)' }}>
               <ShieldAlert size={15} color="var(--accent-cyan)" style={{ flexShrink: 0, marginTop: '2px' }} />
               <p style={{ fontSize: '0.72rem', color: 'var(--text-muted)', lineHeight: 1.4, margin: 0 }}>
-                Kunci API dienkripsi di memori dan tidak dikirimkan ke pihak ketiga kecuali ke provider yang dituju.
+                Kunci API disimpan lokal dalam bentuk teks biasa di folder data aplikasi Anda dan hanya dikirim ke provider yang dituju.
               </p>
             </div>
           </div>

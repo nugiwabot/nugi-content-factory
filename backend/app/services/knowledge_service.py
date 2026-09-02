@@ -235,28 +235,45 @@ class KnowledgeService:
     @staticmethod
     def retrieve_relevant_skills(db: Session, topic: str, pillar: Optional[str] = None, limit: int = 3) -> str:
         skills = db.query(KnowledgeSkill).filter(KnowledgeSkill.enabled.is_(True)).all()
-        if not skills:
-            return ""
+        parts: List[str] = []
+        if skills:
+            topic_tokens = set(_tokenize(topic))
+            scored: List[Tuple[int, KnowledgeSkill]] = []
+            for s in skills:
+                haystack = f"{s.name or ''} {s.description or ''}".lower()
+                overlap = len(topic_tokens & set(_tokenize(haystack)))
+                if pillar and pillar.lower() in haystack:
+                    overlap += 2
+                if topic.lower()[:12] in haystack:
+                    overlap += 1
+                scored.append((overlap, s))
 
-        topic_tokens = set(_tokenize(topic))
-        scored: List[Tuple[int, KnowledgeSkill]] = []
-        for s in skills:
-            haystack = f"{s.name or ''} {s.description or ''}".lower()
-            overlap = len(topic_tokens & set(_tokenize(haystack)))
-            if pillar and pillar.lower() in haystack:
-                overlap += 2
-            if topic.lower()[:12] in haystack:
-                overlap += 1
-            scored.append((overlap, s))
+            scored.sort(key=lambda x: (-x[0], x[1].name))
+            chosen = [s for ov, s in scored[:limit] if ov > 0]
+            if not chosen:
+                chosen = [s for _, s in scored[:limit]]
+            parts.append("\n\n".join([f"### SKILL: {s.name}\n{s.content}" for s in chosen]))
 
-        scored.sort(key=lambda x: (-x[0], x[1].name))
-        chosen = [s for ov, s in scored[:limit] if ov > 0]
-        if not chosen:
-            chosen = [s for _, s in scored[:limit]]
+        # Append externally-indexed supporting docs from the business repository.
+        try:
+            from app.knowledge.source import KnowledgeSource
+            external = KnowledgeSource.supporting_for_topic(topic, pillar, limit=limit)
+            if external:
+                parts.append(external)
+        except Exception as e:
+            logger.warning(f"External knowledge retrieval skipped: {str(e)}")
 
-        return "\n\n".join([f"### SKILL: {s.name}\n{s.content}" for s in chosen])
+        return "\n\n".join([p for p in parts if p])
 
     @staticmethod
     def get_brand_context(db: Session) -> str:
         rows = db.query(BrandContext).all()
-        return "\n\n".join([r.content for r in rows])
+        parts: List[str] = [r.content for r in rows]
+        try:
+            from app.knowledge.source import KnowledgeSource
+            external = KnowledgeSource.core_context()
+            if external:
+                parts.append("# SUMBER PENGETAHUAN BISNIS (freelance-nugi-software-engineer)\n" + external)
+        except Exception as e:
+            logger.warning(f"External core knowledge skipped: {str(e)}")
+        return "\n\n".join([p for p in parts if p])

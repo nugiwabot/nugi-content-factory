@@ -54,6 +54,9 @@ export const api = {
   updatePillar: (id, data) => apiClient.put(`/knowledge/pillars/${id}`, data),
   getBrandContexts: () => apiClient.get('/knowledge/brand'),
   seedKnowledge: () => apiClient.post('/knowledge/seed'),
+  getKnowledgeSource: () => apiClient.get('/knowledge/source'),
+  setKnowledgeSource: (path) => apiClient.post('/knowledge/source', { path }),
+  rescanKnowledge: () => apiClient.post('/knowledge/source/rescan'),
 
   // Phase 3A Editorial Visual Engine
   getEditorialCompositions: () => apiClient.get('/editorial/compositions'),

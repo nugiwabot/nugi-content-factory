@@ -1,6 +1,6 @@
 from typing import List
 
-from fastapi import APIRouter, Depends, File, UploadFile, HTTPException
+from fastapi import APIRouter, Depends, File, UploadFile, HTTPException, Body
 from sqlalchemy.orm import Session
 
 from app.database import get_db
@@ -87,3 +87,30 @@ def list_brand_contexts(db: Session = Depends(get_db)):
 def seed_knowledge(db: Session = Depends(get_db)):
     """Re-runs idempotent knowledge seeding."""
     return KnowledgeService.seed_defaults(db)
+
+
+@router.get("/source")
+def get_knowledge_source():
+    """Returns external business-knowledge source status (read-only path)."""
+    from app.knowledge.source import KnowledgeSource
+    return KnowledgeSource.status()
+
+
+@router.post("/source")
+def set_knowledge_source(path: str = Body(..., embed=True)):
+    """Sets and re-indexes the external business-knowledge source path."""
+    from app.knowledge.source import KnowledgeSource
+    try:
+        KnowledgeSource.set_source_path(path)
+        KnowledgeSource.refresh()
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    return KnowledgeSource.status()
+
+
+@router.post("/source/rescan")
+def rescan_knowledge_source():
+    """Re-reads the external business-knowledge repository from disk."""
+    from app.knowledge.source import KnowledgeSource
+    KnowledgeSource.refresh()
+    return KnowledgeSource.status()

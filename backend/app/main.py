@@ -50,6 +50,8 @@ async def lifespan(app: FastAPI):
 def _seed_knowledge_base() -> None:
     """Idempotently seeds skills, pillars, and brand context on startup."""
     try:
+        from app.knowledge.source import KnowledgeSource
+        KnowledgeSource.load_persisted()
         from app.database import SessionLocal
         from app.services.knowledge_service import KnowledgeService
         db = SessionLocal()
