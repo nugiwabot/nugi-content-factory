@@ -10,7 +10,7 @@ from pydantic import Field
 class Settings(BaseSettings):
     """
     Modular Application Configuration for Nugi Content Factory.
-    Decoupled Model Provider Architecture (LLM, Image, Compute, Storage).
+    Decoupled Model Provider Architecture (LLM, Image, Storage).
     Handles Desktop packaging paths and %LOCALAPPDATA% persistence.
     """
     model_config = SettingsConfigDict(
@@ -87,15 +87,6 @@ class Settings(BaseSettings):
     FLUX_API_KEY: Optional[str] = Field(default=None, description="Flux / BFL API Key")
     FLUX_MODEL: str = Field(default="flux-2-klein-9b", description="Flux Model: flux-2-klein-9b, flux-1.1-pro, flux-dev, flux-schnell")
     FLUX_BASE_URL: str = Field(default="https://api.bfl.ai/v1", description="Flux API Gateway Base URL")
-
-    # =========================================================================
-    # 3. COMPUTE PROVIDER CONFIGURATION (Optional Remote Workloads)
-    # =========================================================================
-    COMPUTE_PROVIDER: str = Field(default="local", description="Active Compute provider: local, runpod, mock")
-    COMPUTE_API_KEY: Optional[str] = Field(default=None, description="Compute Provider API Key")
-    COMPUTE_ENDPOINT_ID: Optional[str] = Field(default=None, description="Compute Worker Endpoint ID")
-    RUNPOD_API_KEY: Optional[str] = Field(default=None, description="RunPod API Key")
-    RUNPOD_ENDPOINT_ID: Optional[str] = Field(default=None, description="RunPod Serverless Endpoint ID")
 
     # Canvas & Rendering System Defaults
     DEFAULT_IMAGE_WIDTH: int = Field(default=1080, description="Default canvas width in pixels")
@@ -195,16 +186,6 @@ class Settings(BaseSettings):
                 if img.get("model"):
                     self.IMAGE_MODEL = img["model"]
                     self.FLUX_MODEL = img["model"]
-
-                comp = data.get("compute", {})
-                if comp.get("provider"):
-                    self.COMPUTE_PROVIDER = comp["provider"]
-                if comp.get("endpoint_id"):
-                    self.COMPUTE_ENDPOINT_ID = comp["endpoint_id"]
-                    self.RUNPOD_ENDPOINT_ID = comp["endpoint_id"]
-                if comp.get("api_key"):
-                    self.COMPUTE_API_KEY = comp["api_key"]
-                    self.RUNPOD_API_KEY = comp["api_key"]
 
             except Exception:
                 pass

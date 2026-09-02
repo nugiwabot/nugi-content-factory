@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { 
-  X, Server, HardDrive, Cpu, ShieldAlert, Sparkles, RefreshCw, 
+  X, Server, HardDrive, ShieldAlert, Sparkles, RefreshCw, 
   CheckCircle2, AlertTriangle, MessageSquare, Image as ImageIcon,
   Save, Sliders, Zap
 } from 'lucide-react';
@@ -25,12 +25,6 @@ export default function SettingsModal({ isOpen, onClose, healthStatus }) {
     endpoint_url: 'https://api.bfl.ai/v1',
     api_key: '',
     model: 'flux-2-klein-9b'
-  });
-
-  const [computeConfig, setComputeConfig] = useState({
-    provider: 'local',
-    endpoint_id: '',
-    api_key: ''
   });
 
   // Test states
@@ -67,14 +61,6 @@ export default function SettingsModal({ isOpen, onClose, healthStatus }) {
           model: data.image.model || ''
         }));
       }
-      if (data.compute) {
-        setComputeConfig(prev => ({
-          ...prev,
-          provider: data.compute.provider || 'local',
-          endpoint_id: data.compute.endpoint_id || '',
-          api_key: data.compute.api_key || ''
-        }));
-      }
     } catch (err) {
       console.error('Failed to load settings:', err);
     } finally {
@@ -88,8 +74,7 @@ export default function SettingsModal({ isOpen, onClose, healthStatus }) {
       setSaveSuccess(false);
       await api.updateProviderSettings({
         llm: llmConfig,
-        image: imageConfig,
-        compute: computeConfig
+        image: imageConfig
       });
       setSaveSuccess(true);
       setTimeout(() => setSaveSuccess(false), 3000);
@@ -109,8 +94,6 @@ export default function SettingsModal({ isOpen, onClose, healthStatus }) {
         payload = { ...payload, ...llmConfig };
       } else if (category === 'image') {
         payload = { ...payload, ...imageConfig };
-      } else if (category === 'compute') {
-        payload = { ...payload, ...computeConfig };
       }
 
       const res = await api.testProviderConnection(payload);
@@ -156,13 +139,6 @@ export default function SettingsModal({ isOpen, onClose, healthStatus }) {
           >
             <ImageIcon size={14} />
             <span>Image Provider</span>
-          </button>
-          <button 
-            className={`btn btn-sm ${activeTab === 'compute' ? 'btn-primary' : 'btn-secondary'}`}
-            onClick={() => { setActiveTab('compute'); setTestResult(null); }}
-          >
-            <Cpu size={14} />
-            <span>Compute (RunPod)</span>
           </button>
           <button 
             className={`btn btn-sm ${activeTab === 'system' ? 'btn-primary' : 'btn-secondary'}`}
@@ -305,68 +281,7 @@ export default function SettingsModal({ isOpen, onClose, healthStatus }) {
           </div>
         )}
 
-        {/* Tab 3: Compute Provider */}
-        {activeTab === 'compute' && (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-            <div className="form-group">
-              <label className="form-label">Compute Provider (Heavy Workloads Only)</label>
-              <select 
-                className="form-select"
-                value={computeConfig.provider}
-                onChange={(e) => setComputeConfig({ ...computeConfig, provider: e.target.value })}
-              >
-                <option value="local">Local CPU / In-Process (Default - No External GPU)</option>
-                <option value="runpod">RunPod Serverless GPU (Optional for Video/Heavy AI)</option>
-                <option value="mock">Mock Compute Provider (Testing)</option>
-              </select>
-            </div>
-
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
-              <div className="form-group">
-                <label className="form-label">RunPod Endpoint ID</label>
-                <input 
-                  type="text" 
-                  className="form-input" 
-                  placeholder="v2-endpoint-id"
-                  disabled={computeConfig.provider !== 'runpod'}
-                  value={computeConfig.endpoint_id || ''}
-                  onChange={(e) => setComputeConfig({ ...computeConfig, endpoint_id: e.target.value })}
-                />
-              </div>
-
-              <div className="form-group">
-                <label className="form-label">RunPod API Key</label>
-                <input 
-                  type="password" 
-                  className="form-input" 
-                  placeholder="rpa_..."
-                  disabled={computeConfig.provider !== 'runpod'}
-                  value={computeConfig.api_key || ''}
-                  onChange={(e) => setComputeConfig({ ...computeConfig, api_key: e.target.value })}
-                />
-              </div>
-            </div>
-
-            <div style={{ background: 'rgba(56, 189, 248, 0.06)', padding: '10px 12px', borderRadius: 'var(--radius-sm)', border: '1px solid rgba(56, 189, 248, 0.15)' }}>
-              <p style={{ fontSize: '0.74rem', color: 'var(--text-muted)', margin: 0 }}>
-                💡 <strong>Catatan:</strong> RunPod bersifat opsional dan <em>hanya</em> digunakan untuk tugas komputasi berat (video rendering, transcriber, heavy local inference). Pembuatan gambar standar diarahkan langsung ke Image Provider.
-              </p>
-            </div>
-
-            <div style={{ display: 'flex', justifyContent: 'flex-start', marginTop: '4px' }}>
-              <button 
-                className="btn btn-secondary btn-sm"
-                disabled={testing}
-                onClick={() => handleTest('compute')}
-              >
-                <RefreshCw size={13} className={testing ? 'spin' : ''} />
-                <span>{testing ? 'Testing Compute...' : 'Test Compute Provider'}</span>
-              </button>
-            </div>
-          </div>
-        )}
-
-        {/* Tab 4: System & Storage */}
+        {/* Tab 3: System & Storage */}
         {activeTab === 'system' && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
             <div className="card" style={{ background: 'rgba(0,0,0,0.3)', padding: '12px' }}>

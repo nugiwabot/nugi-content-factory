@@ -4,12 +4,9 @@ from fastapi.testclient import TestClient
 from app.main import app
 from app.core.config import settings
 from app.providers.factory import ProviderFactory
-from app.providers.base import LLMProvider, ImageProvider, ComputeProvider, StorageProvider
+from app.providers.base import LLMProvider, ImageProvider, StorageProvider
 from app.providers.mock_llm import MockLLMProvider
 from app.providers.mock_image import MockImageProvider
-from app.providers.mock_compute import MockComputeProvider
-from app.providers.local_compute import LocalComputeProvider
-from app.providers.runpod_compute import RunPodComputeProvider
 from app.providers.openrouter_llm import OpenRouterLLMProvider
 from app.providers.openai_llm import OpenAILLMProvider
 from app.providers.anthropic_llm import AnthropicLLMProvider
@@ -60,35 +57,6 @@ def test_provider_factory_image_instantiation():
     assert isinstance(custom_img, CustomImageProvider)
 
 
-def test_provider_factory_compute_instantiation():
-    """Verify Compute providers can be dynamically instantiated and RunPod is isolated."""
-    mock_comp = ProviderFactory.get_compute_provider("mock")
-    assert isinstance(mock_comp, ComputeProvider)
-    assert isinstance(mock_comp, MockComputeProvider)
-
-    local_comp = ProviderFactory.get_compute_provider("local")
-    assert isinstance(local_comp, LocalComputeProvider)
-
-    runpod_comp = ProviderFactory.get_compute_provider("runpod", {"endpoint_id": "test-ep-123"})
-    assert isinstance(runpod_comp, RunPodComputeProvider)
-
-
-def test_compute_provider_workload_execution():
-    """Verify compute provider executes jobs independently of standard image generation."""
-    local_comp = LocalComputeProvider()
-    res = local_comp.submit_job(
-        task_type="video_render",
-        payload={"scenes": 4, "resolution": "1080p"}
-    )
-    assert res.status == "COMPLETED"
-    assert res.result["task_type"] == "video_render"
-    assert res.result["processed_locally"] is True
-
-    # Test status check
-    status = local_comp.get_job_status(res.job_id)
-    assert status.status == "COMPLETED"
-
-
 def test_api_get_provider_settings():
     """Verify GET /api/v1/settings/providers returns structured config with masked keys."""
     resp = client.get("/api/v1/settings/providers")
@@ -96,11 +64,9 @@ def test_api_get_provider_settings():
     data = resp.json()
     assert "llm" in data
     assert "image" in data
-    assert "compute" in data
     assert "supported_llm_providers" in data
     assert "openrouter" in data["supported_llm_providers"]
     assert "flux" in data["supported_image_providers"]
-    assert "runpod" in data["supported_compute_providers"]
 
 
 def test_api_update_provider_settings():
@@ -113,9 +79,6 @@ def test_api_update_provider_settings():
         "image": {
             "provider": "mock",
             "model": "mock-flux"
-        },
-        "compute": {
-            "provider": "local"
         }
     }
     resp = client.post("/api/v1/settings/providers", json=payload)
@@ -123,7 +86,6 @@ def test_api_update_provider_settings():
     data = resp.json()
     assert data["llm"]["provider"] == "mock"
     assert data["image"]["provider"] == "mock"
-    assert data["compute"]["provider"] == "local"
 
 
 def test_api_test_provider_connection_mock():
@@ -143,11 +105,3 @@ def test_api_test_provider_connection_mock():
     })
     assert resp_img.status_code == 200
     assert resp_img.json()["status"] == "SUCCESS"
-
-    # Test Compute
-    resp_comp = client.post("/api/v1/settings/providers/test", json={
-        "category": "compute",
-        "provider": "mock"
-    })
-    assert resp_comp.status_code == 200
-    assert resp_comp.json()["status"] == "SUCCESS"

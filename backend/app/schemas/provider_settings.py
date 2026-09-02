@@ -16,34 +16,23 @@ class ImageConfigSchema(BaseModel):
     model: Optional[str] = Field(default=None, description="Model identifier")
 
 
-class ComputeConfigSchema(BaseModel):
-    provider: str = Field(default="local", description="Compute provider: local, runpod, mock")
-    endpoint_id: Optional[str] = Field(default=None, description="RunPod Endpoint ID or worker URL")
-    api_key: Optional[str] = Field(default=None, description="Compute API Key (masked in responses)")
-    worker_config: Optional[Dict[str, Any]] = Field(default_factory=dict, description="Worker hardware/timeout configuration")
-
-
 class ProviderSettingsResponse(BaseModel):
     llm: LLMConfigSchema
     image: ImageConfigSchema
-    compute: ComputeConfigSchema
     supported_llm_providers: List[str] = ["openrouter", "openai", "anthropic", "google", "custom", "mock"]
     supported_image_providers: List[str] = ["flux", "openrouter", "openai", "custom", "mock"]
-    supported_compute_providers: List[str] = ["local", "runpod", "mock"]
 
 
 class ProviderSettingsUpdateRequest(BaseModel):
     llm: Optional[LLMConfigSchema] = None
     image: Optional[ImageConfigSchema] = None
-    compute: Optional[ComputeConfigSchema] = None
 
 
 class TestProviderRequest(BaseModel):
-    category: str = Field(..., description="Provider category: 'llm', 'image', or 'compute'")
+    category: str = Field(..., description="Provider category: 'llm' or 'image'")
     provider: Optional[str] = None
     base_url: Optional[str] = None
     endpoint_url: Optional[str] = None
-    endpoint_id: Optional[str] = None
     api_key: Optional[str] = None
     model: Optional[str] = None
 

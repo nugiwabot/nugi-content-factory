@@ -42,9 +42,6 @@ def test_persistent_settings_lifecycle(tmp_path):
             "model": "flux-2-klein-9b",
             "api_key": "test-flux-key",
             "endpoint_url": "https://api.bfl.ai/v1"
-        },
-        "compute": {
-            "provider": "local"
         }
     }
 

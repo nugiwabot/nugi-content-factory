@@ -1,18 +1,17 @@
 from typing import Optional, Dict, Any
 from app.core.config import settings
 from app.core.errors import ProviderError
-from app.providers.base import LLMProvider, ImageProvider, StorageProvider, ComputeProvider
+from app.providers.base import LLMProvider, ImageProvider, StorageProvider
 from app.providers.mock_llm import MockLLMProvider
 from app.providers.mock_image import MockImageProvider
-from app.providers.mock_compute import MockComputeProvider
 from app.providers.local_storage import LocalStorageProvider
 
 
 class ProviderFactory:
     """
     Modular Provider Factory.
-    Decouples core business logic from specific AI vendors (OpenRouter, OpenAI, Anthropic, Google, Flux, RunPod, etc.).
-    Supports dynamic instantiation with runtime overrides and graceful mock fallbacks.
+    Decouples core business logic from specific AI vendors (OpenRouter, OpenAI, Anthropic, Google, Flux, etc.).
+    Supports dynamic instantiation with runtime overrides.
     """
 
     @staticmethod
@@ -119,34 +118,6 @@ class ProviderFactory:
         raise ProviderError(
             provider=p_type,
             message=f"Image Provider '{p_type}' is not supported. Options: 'mock', 'flux', 'openai', 'openrouter', 'custom'."
-        )
-
-    @staticmethod
-    def get_compute_provider(
-        provider_type: Optional[str] = None,
-        config: Optional[Dict[str, Any]] = None
-    ) -> ComputeProvider:
-        cfg = config or {}
-        p_type = (provider_type or cfg.get("provider") or settings.COMPUTE_PROVIDER).lower()
-
-        if p_type == "mock":
-            return MockComputeProvider()
-
-        elif p_type == "local":
-            from app.providers.local_compute import LocalComputeProvider
-            return LocalComputeProvider()
-
-        elif p_type == "runpod":
-            from app.providers.runpod_compute import RunPodComputeProvider
-            return RunPodComputeProvider(
-                api_key=cfg.get("api_key"),
-                endpoint_id=cfg.get("endpoint_id"),
-                base_url=cfg.get("base_url")
-            )
-
-        raise ProviderError(
-            provider=p_type,
-            message=f"Compute Provider '{p_type}' is not supported. Options: 'local', 'runpod', 'mock'."
         )
 
     @staticmethod

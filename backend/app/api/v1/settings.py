@@ -10,8 +10,7 @@ from app.schemas.provider_settings import (
     TestProviderRequest,
     TestProviderResponse,
     LLMConfigSchema,
-    ImageConfigSchema,
-    ComputeConfigSchema
+    ImageConfigSchema
 )
 from app.providers.factory import ProviderFactory
 
@@ -72,10 +71,6 @@ def get_provider_settings():
         active_img_url = active_img_url or settings.FLUX_BASE_URL
         active_img_model = active_img_model or settings.FLUX_MODEL
 
-    # Active Compute config
-    active_comp_key = settings.COMPUTE_API_KEY or settings.RUNPOD_API_KEY
-    active_comp_endpoint = settings.COMPUTE_ENDPOINT_ID or settings.RUNPOD_ENDPOINT_ID
-
     return ProviderSettingsResponse(
         llm=LLMConfigSchema(
             provider=settings.LLM_PROVIDER,
@@ -88,11 +83,6 @@ def get_provider_settings():
             endpoint_url=active_img_url,
             api_key=_mask_key(active_img_key),
             model=active_img_model
-        ),
-        compute=ComputeConfigSchema(
-            provider=settings.COMPUTE_PROVIDER,
-            endpoint_id=active_comp_endpoint,
-            api_key=_mask_key(active_comp_key)
         )
     )
 
@@ -116,16 +106,6 @@ def update_provider_settings(payload: ProviderSettingsUpdateRequest):
                 settings.ANTHROPIC_API_KEY = resolved_llm_key
             elif payload.llm.provider == "google":
                 settings.GOOGLE_API_KEY = resolved_llm_key
-        if payload.llm.model:
-            settings.LLM_MODEL = payload.llm.model
-            if payload.llm.provider == "openrouter":
-                settings.OPENROUTER_MODEL = payload.llm.model
-            elif payload.llm.provider == "openai":
-                settings.OPENAI_MODEL = payload.llm.model
-            elif payload.llm.provider == "anthropic":
-                settings.ANTHROPIC_MODEL = payload.llm.model
-            elif payload.llm.provider == "google":
-                settings.GOOGLE_MODEL = payload.llm.model
 
     if payload.image:
         if payload.image.provider:
@@ -140,20 +120,6 @@ def update_provider_settings(payload: ProviderSettingsUpdateRequest):
             settings.IMAGE_API_KEY = resolved_img_key
             if payload.image.provider == "flux":
                 settings.FLUX_API_KEY = resolved_img_key
-        if payload.image.model:
-            settings.IMAGE_MODEL = payload.image.model
-            if payload.image.provider == "flux":
-                settings.FLUX_MODEL = payload.image.model
-
-    if payload.compute:
-        if payload.compute.provider:
-            settings.COMPUTE_PROVIDER = payload.compute.provider
-        if payload.compute.endpoint_id:
-            settings.COMPUTE_ENDPOINT_ID = payload.compute.endpoint_id
-            settings.RUNPOD_ENDPOINT_ID = payload.compute.endpoint_id
-        if payload.compute.api_key and not payload.compute.api_key.startswith("****") and not "..." in payload.compute.api_key:
-            settings.COMPUTE_API_KEY = payload.compute.api_key
-            settings.RUNPOD_API_KEY = payload.compute.api_key
 
     # Save to persistent storage file
     settings.save_persistent_settings({
@@ -168,15 +134,10 @@ def update_provider_settings(payload: ProviderSettingsUpdateRequest):
             "endpoint_url": settings.IMAGE_BASE_URL or settings.IMAGE_ENDPOINT,
             "api_key": settings.IMAGE_API_KEY,
             "model": settings.IMAGE_MODEL
-        },
-        "compute": {
-            "provider": settings.COMPUTE_PROVIDER,
-            "endpoint_id": settings.COMPUTE_ENDPOINT_ID or settings.RUNPOD_ENDPOINT_ID,
-            "api_key": settings.COMPUTE_API_KEY or settings.RUNPOD_API_KEY
         }
     })
 
-    logger.info(f"Updated Provider Settings: LLM={settings.LLM_PROVIDER}, Image={settings.IMAGE_PROVIDER}, Compute={settings.COMPUTE_PROVIDER}")
+    logger.info(f"Updated Provider Settings: LLM={settings.LLM_PROVIDER}, Image={settings.IMAGE_PROVIDER}")
     return get_provider_settings()
 
 
@@ -227,27 +188,7 @@ def test_provider_connection(payload: TestProviderRequest):
                 message=res.get("message", "Image Provider connection successful.")
             )
 
-        elif cat == "compute":
-            p_name = payload.provider or settings.COMPUTE_PROVIDER
-            inst = ProviderFactory.get_compute_provider(
-                provider_type=p_name,
-                config={
-                    "api_key": payload.api_key if (payload.api_key and not payload.api_key.startswith("****")) else settings.COMPUTE_API_KEY,
-                    "endpoint_id": payload.endpoint_id,
-                    "base_url": payload.base_url
-                }
-            )
-            res = inst.test_connection()
-            latency = int((time.time() - start_t) * 1000)
-            return TestProviderResponse(
-                status=res.get("status", "SUCCESS"),
-                category="compute",
-                provider=inst.provider_name,
-                latency_ms=latency,
-                message=res.get("message", "Compute Provider ready.")
-            )
-
-        raise HTTPException(status_code=400, detail=f"Invalid category '{payload.category}'. Use 'llm', 'image', or 'compute'.")
+        raise HTTPException(status_code=400, detail=f"Invalid category '{payload.category}'. Use 'llm' or 'image'.")
 
     except Exception as e:
         latency = int((time.time() - start_t) * 1000)
