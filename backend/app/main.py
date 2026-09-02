@@ -117,9 +117,16 @@ def create_app() -> FastAPI:
         async def serve_spa_fallback(full_path: str):
             if full_path.startswith("api") or full_path.startswith("docs") or full_path.startswith("openapi"):
                 return JSONResponse(status_code=404, content={"error": "Not Found"})
-            
+
             # Check if requested file exists directly (e.g. /nugi_properti_logo.png, /favicon.ico)
-            static_file = frontend_dist / full_path
+            # Resolve and enforce containment inside the frontend dist directory.
+            dist_root = frontend_dist.resolve()
+            static_file = (dist_root / full_path).resolve()
+            try:
+                static_file.relative_to(dist_root)
+            except ValueError:
+                return JSONResponse(status_code=404, content={"error": "Not Found"})
+
             if static_file.is_file():
                 return FileResponse(static_file)
 
