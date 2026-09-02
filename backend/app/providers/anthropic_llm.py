@@ -98,7 +98,10 @@ class AnthropicLLMProvider(LLMProvider):
                 content_text = content_text.split("```", 1)[1].rsplit("```", 1)[0].strip()
 
             parsed_json = json.loads(content_text)
-            tokens_used = (data.get("usage", {}).get("input_tokens", 0) + data.get("usage", {}).get("output_tokens", 0))
+            usage = data.get("usage", {})
+            tokens_in = usage.get("input_tokens")
+            tokens_out = usage.get("output_tokens")
+            tokens_used = (tokens_in or 0) + (tokens_out or 0) if (tokens_in is not None or tokens_out is not None) else None
             latency_ms = int((time.time() - start_time) * 1000)
 
             return LLMContentOutput(
@@ -112,7 +115,11 @@ class AnthropicLLMProvider(LLMProvider):
                     "Cinematic architectural photography of modern luxury property with dramatic twilight lighting"
                 ),
                 raw_response=data,
+                provider=self.provider_name,
+                model=self.model,
                 tokens_used=tokens_used,
+                tokens_in=tokens_in,
+                tokens_out=tokens_out,
                 latency_ms=latency_ms
             )
 

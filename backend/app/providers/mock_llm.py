@@ -84,6 +84,11 @@ class MockLLMProvider(LLMProvider):
                 "tone": tone_of_voice,
                 "audience": target_audience
             },
+            provider=self.provider_name,
+            model="mock-llm-v1",
             tokens_used=240,
+            tokens_in=120,
+            tokens_out=120,
+            estimated_cost=0.0,
             latency_ms=max(latency_ms, 12)
         )

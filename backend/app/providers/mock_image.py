@@ -95,5 +95,8 @@ class MockImageProvider(ImageProvider):
             width=width,
             height=height,
             prompt_used=prompt,
+            provider=self.provider_name,
+            model="mock-image-v1",
+            estimated_cost=0.0,
             latency_ms=max(latency_ms, 15)
         )

@@ -96,7 +96,10 @@ class OpenAILLMProvider(LLMProvider):
 
             content_text = data["choices"][0]["message"]["content"]
             parsed_json = json.loads(content_text)
-            tokens_used = data.get("usage", {}).get("total_tokens")
+            usage = data.get("usage", {})
+            tokens_used = usage.get("total_tokens")
+            tokens_in = usage.get("prompt_tokens")
+            tokens_out = usage.get("completion_tokens")
             latency_ms = int((time.time() - start_time) * 1000)
 
             return LLMContentOutput(
@@ -110,7 +113,11 @@ class OpenAILLMProvider(LLMProvider):
                     "Cinematic architectural photography of modern luxury property with dramatic twilight lighting"
                 ),
                 raw_response=data,
+                provider=self.provider_name,
+                model=self.model,
                 tokens_used=tokens_used,
+                tokens_in=tokens_in,
+                tokens_out=tokens_out,
                 latency_ms=latency_ms
             )
 

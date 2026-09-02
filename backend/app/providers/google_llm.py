@@ -97,7 +97,10 @@ class GoogleLLMProvider(LLMProvider):
                     "Cinematic architectural photography of modern luxury property with dramatic twilight lighting"
                 ),
                 raw_response=data,
+                provider=self.provider_name,
+                model=self.model,
                 tokens_used=tokens_used,
+                tokens_in=tokens_used,
                 latency_ms=latency_ms
             )
 

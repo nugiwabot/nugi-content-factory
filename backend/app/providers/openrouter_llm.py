@@ -113,6 +113,8 @@ class OpenRouterLLMProvider(LLMProvider):
                 latency_ms = int((time.time() - start_time) * 1000)
                 usage = res_json.get("usage", {})
                 tokens_used = usage.get("total_tokens")
+                tokens_in = usage.get("prompt_tokens")
+                tokens_out = usage.get("completion_tokens")
 
                 return LLMContentOutput(
                     headline=data.get("headline", topic),
@@ -122,7 +124,11 @@ class OpenRouterLLMProvider(LLMProvider):
                     call_to_action=data.get("call_to_action", ""),
                     visual_concept_prompt=data.get("visual_concept_prompt", ""),
                     raw_response=res_json,
+                    provider=self.provider_name,
+                    model=self.model,
                     tokens_used=tokens_used,
+                    tokens_in=tokens_in,
+                    tokens_out=tokens_out,
                     latency_ms=latency_ms
                 )
 

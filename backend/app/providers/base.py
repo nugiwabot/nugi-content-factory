@@ -13,8 +13,13 @@ class LLMContentOutput(BaseModel):
     call_to_action: str = Field(description="Direct response CTA")
     visual_concept_prompt: str = Field(description="Prompt for image generation model")
     raw_response: Dict[str, Any] = Field(default_factory=dict)
+    provider: Optional[str] = None
+    model: Optional[str] = None
     tokens_used: Optional[int] = None
+    tokens_in: Optional[int] = None
+    tokens_out: Optional[int] = None
     latency_ms: Optional[int] = None
+    estimated_cost: Optional[float] = None
 
 
 class ImageGenerationOutput(BaseModel):
@@ -24,7 +29,10 @@ class ImageGenerationOutput(BaseModel):
     width: int
     height: int
     prompt_used: str
+    provider: Optional[str] = None
+    model: Optional[str] = None
     latency_ms: Optional[int] = None
+    estimated_cost: Optional[float] = None
 
 
 class LLMProvider(ABC):

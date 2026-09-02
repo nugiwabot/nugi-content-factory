@@ -131,7 +131,8 @@ class FluxImageProvider(ImageProvider):
                             width=width,
                             height=height,
                             latency_ms=latency,
-                            model_used=self.model,
+                            provider=self.provider_name,
+                            model=self.model,
                             prompt_used=prompt
                         )
 

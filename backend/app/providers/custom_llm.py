@@ -76,6 +76,8 @@ class CustomLLMProvider(LLMProvider):
                     "Cinematic architectural photography of modern luxury real estate"
                 ),
                 raw_response=data,
+                provider=self.provider_name,
+                model=self.model,
                 latency_ms=latency_ms
             )
 

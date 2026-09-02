@@ -80,6 +80,8 @@ class OpenAIImageProvider(ImageProvider):
                 width=width,
                 height=height,
                 prompt_used=prompt,
+                provider=self.provider_name,
+                model=self.model,
                 latency_ms=latency_ms
             )
 
