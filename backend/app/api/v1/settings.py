@@ -26,6 +26,18 @@ def _mask_key(key: str | None) -> str | None:
     return f"{key[:4]}...{key[-4:]}"
 
 
+def _looks_masked(key: str) -> bool:
+    """Heuristic: a masked/echoed key should never overwrite a stored secret."""
+    return key.startswith("****") or "..." in key
+
+
+def _resolve_api_key(new_key: str | None, current_key: str | None) -> str | None:
+    """Returns current_key when new_key is empty or masked; otherwise the new secret."""
+    if not new_key or _looks_masked(new_key):
+        return current_key
+    return new_key
+
+
 @router.get("/providers", response_model=ProviderSettingsResponse)
 def get_provider_settings():
     """Returns current active provider configurations with masked secret keys."""
@@ -93,16 +105,17 @@ def update_provider_settings(payload: ProviderSettingsUpdateRequest):
             settings.LLM_PROVIDER = payload.llm.provider
         if payload.llm.base_url:
             settings.LLM_BASE_URL = payload.llm.base_url
-        if payload.llm.api_key and not payload.llm.api_key.startswith("****") and not "..." in payload.llm.api_key:
-            settings.LLM_API_KEY = payload.llm.api_key
+        resolved_llm_key = _resolve_api_key(payload.llm.api_key, settings.LLM_API_KEY)
+        if resolved_llm_key != settings.LLM_API_KEY:
+            settings.LLM_API_KEY = resolved_llm_key
             if payload.llm.provider == "openrouter":
-                settings.OPENROUTER_API_KEY = payload.llm.api_key
+                settings.OPENROUTER_API_KEY = resolved_llm_key
             elif payload.llm.provider == "openai":
-                settings.OPENAI_API_KEY = payload.llm.api_key
+                settings.OPENAI_API_KEY = resolved_llm_key
             elif payload.llm.provider == "anthropic":
-                settings.ANTHROPIC_API_KEY = payload.llm.api_key
+                settings.ANTHROPIC_API_KEY = resolved_llm_key
             elif payload.llm.provider == "google":
-                settings.GOOGLE_API_KEY = payload.llm.api_key
+                settings.GOOGLE_API_KEY = resolved_llm_key
         if payload.llm.model:
             settings.LLM_MODEL = payload.llm.model
             if payload.llm.provider == "openrouter":
@@ -122,10 +135,11 @@ def update_provider_settings(payload: ProviderSettingsUpdateRequest):
             settings.IMAGE_ENDPOINT = payload.image.endpoint_url
             if payload.image.provider == "flux":
                 settings.FLUX_BASE_URL = payload.image.endpoint_url
-        if payload.image.api_key and not payload.image.api_key.startswith("****") and not "..." in payload.image.api_key:
-            settings.IMAGE_API_KEY = payload.image.api_key
+        resolved_img_key = _resolve_api_key(payload.image.api_key, settings.IMAGE_API_KEY)
+        if resolved_img_key != settings.IMAGE_API_KEY:
+            settings.IMAGE_API_KEY = resolved_img_key
             if payload.image.provider == "flux":
-                settings.FLUX_API_KEY = payload.image.api_key
+                settings.FLUX_API_KEY = resolved_img_key
         if payload.image.model:
             settings.IMAGE_MODEL = payload.image.model
             if payload.image.provider == "flux":

@@ -63,13 +63,15 @@ def _seed_knowledge_base() -> None:
 
 def create_app() -> FastAPI:
     """Application factory for FastAPI backend."""
+    # Interactive docs are development conveniences; disabled in packaged/production mode.
+    docs_enabled = not settings.is_production
     app = FastAPI(
         title=settings.APP_NAME,
         version=settings.APP_VERSION,
         description="Internal AI Content Production System for Property Marketing",
-        docs_url="/docs",
-        redoc_url="/redoc",
-        openapi_url="/openapi.json",
+        docs_url="/docs" if docs_enabled else None,
+        redoc_url="/redoc" if docs_enabled else None,
+        openapi_url="/openapi.json" if docs_enabled else None,
         lifespan=lifespan
     )
 
