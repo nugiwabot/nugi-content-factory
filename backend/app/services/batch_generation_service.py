@@ -66,6 +66,28 @@ class BatchGenerationService:
         return run
 
     @staticmethod
+    def mark_interrupted_runs_failed() -> None:
+        """Recovers runs stuck in RUNNING after a crash/restart."""
+        db = SessionLocal()
+        try:
+            runs = db.query(BatchRun).filter(BatchRun.status == "RUNNING").all()
+            from app.models.batch import BatchItem
+            for run in runs:
+                run.status = "FAILED"
+                run.summary = {**(run.summary or {}), "error": "Interrupted by application restart. Use Resume to continue."}
+                db.query(BatchItem).filter(
+                    BatchItem.batch_run_id == run.id, BatchItem.status == "RUNNING"
+                ).update({"status": "QUEUED"})
+            db.commit()
+            if runs:
+                logger.info(f"Marked {len(runs)} interrupted batch run(s) as FAILED (resumable).")
+        except Exception as e:
+            logger.error(f"Failed to reconcile interrupted runs: {str(e)}")
+            db.rollback()
+        finally:
+            db.close()
+
+    @staticmethod
     def execute_batch(run_id: str) -> None:
         """Runs the batch loop in a fresh DB session (background task)."""
         db = SessionLocal()
@@ -87,7 +109,14 @@ class BatchGenerationService:
             total = max(len(items), 1)
             total_cost_usd = 0.0
 
+            # Resume support: previously completed items are preserved and skipped.
+            run.completed_items = sum(1 for it in items if it.status == "COMPLETED")
+            db.commit()
+
             for idx, item in enumerate(items):
+                if item.status == "COMPLETED":
+                    continue
+
                 try:
                     item.status = "RUNNING"
                     db.commit()
@@ -104,12 +133,32 @@ class BatchGenerationService:
                         project_id=run.project_id
                     )
 
-                    pkg = agent.generate_full_package(
-                        brief=brief,
-                        db=db,
-                        skill_context=skill_context,
-                        brand_context=brand_context
-                    )
+                    # Idempotent content key per batch item (prevents duplicates on resume).
+                    import hashlib
+                    content_key = "b" + hashlib.md5(f"{run.id}:{item.id}".encode("utf-8")).hexdigest()
+
+                    # Per-item retry (bounded); provider-level retries happen inside providers.
+                    attempts = 2
+                    pkg = None
+                    last_error: Exception | None = None
+                    for attempt in range(1, attempts + 1):
+                        try:
+                            pkg = agent.generate_full_package(
+                                brief=brief,
+                                db=db,
+                                skill_context=skill_context,
+                                brand_context=brand_context,
+                                content_id_override=content_key
+                            )
+                            break
+                        except Exception as e:
+                            last_error = e
+                            if attempt < attempts:
+                                logger.warning(f"BatchItem {item.id} attempt {attempt} failed; retrying: {e}")
+                                import time
+                                time.sleep(1.0)
+                    if pkg is None:
+                        raise last_error or RuntimeError("BatchItem generation failed.")
 
                     if pkg.estimated_cost_usd is not None:
                         total_cost_usd += pkg.estimated_cost_usd

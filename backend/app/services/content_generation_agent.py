@@ -51,7 +51,8 @@ class ContentGenerationAgent:
         image_provider_type: Optional[str] = None,
         debug_safezone: bool = False,
         skill_context: Optional[str] = None,
-        brand_context: Optional[str] = None
+        brand_context: Optional[str] = None,
+        content_id_override: Optional[str] = None
     ) -> ContentPackage:
         """
         Executes end-to-end editorial generation pipeline (Phase 3D-3 Safezone Enforcement):
@@ -203,23 +204,26 @@ class ContentGenerationAgent:
         variants[0].rendered_asset_url = asset_url
         variants[0].visual_qa_score = visual_qa.score
 
-        content_id = str(uuid.uuid4())
+        content_id = content_id_override or str(uuid.uuid4())
 
-        # 12. Database Persistence
+        # 12. Database Persistence (idempotent: re-runs update in place, never duplicate)
         if db and brief.project_id:
             try:
-                db_content = Content(
-                    id=content_id,
-                    project_id=brief.project_id,
-                    status="COMPLETED",
-                    headline=editorial_spec.headline,
-                    hook_text=editorial_spec.subheadline,
-                    body_caption=editorial_spec.caption,
-                    call_to_action=editorial_spec.cta_text or "",
-                    hashtags="#Properti #NugiProperti",
-                    visual_concept_prompt=art_direction.image_prompt,
-                    template_id=design_spec.template_id,
-                    metadata_json={
+                existing_content = None
+                if content_id_override:
+                    existing_content = db.query(Content).filter(Content.id == content_id).first()
+
+                if existing_content:
+                    existing_content.project_id = brief.project_id
+                    existing_content.status = "COMPLETED"
+                    existing_content.headline = editorial_spec.headline
+                    existing_content.hook_text = editorial_spec.subheadline
+                    existing_content.body_caption = editorial_spec.caption
+                    existing_content.call_to_action = editorial_spec.cta_text or ""
+                    existing_content.hashtags = "#Properti #NugiProperti"
+                    existing_content.visual_concept_prompt = art_direction.image_prompt
+                    existing_content.template_id = design_spec.template_id
+                    existing_content.metadata_json = {
                         "content_type": editorial_spec.content_type.value,
                         "archetype": art_direction.archetype.value,
                         "cta_policy": editorial_spec.cta_policy.value,
@@ -230,22 +234,59 @@ class ContentGenerationAgent:
                         "usage": usage_report,
                         "estimated_cost_usd": total_cost
                     }
-                )
-                db.add(db_content)
+                    db_content = existing_content
+                else:
+                    db_content = Content(
+                        id=content_id,
+                        project_id=brief.project_id,
+                        status="COMPLETED",
+                        headline=editorial_spec.headline,
+                        hook_text=editorial_spec.subheadline,
+                        body_caption=editorial_spec.caption,
+                        call_to_action=editorial_spec.cta_text or "",
+                        hashtags="#Properti #NugiProperti",
+                        visual_concept_prompt=art_direction.image_prompt,
+                        template_id=design_spec.template_id,
+                        metadata_json={
+                            "content_type": editorial_spec.content_type.value,
+                            "archetype": art_direction.archetype.value,
+                            "cta_policy": editorial_spec.cta_policy.value,
+                            "highlight_words": editorial_spec.highlight_words,
+                            "target_audience": editorial_spec.target_audience,
+                            "primary_accent_color": design_spec.accent_color_hex,
+                            "visual_story": concept.visual_story,
+                            "usage": usage_report,
+                            "estimated_cost_usd": total_cost
+                        }
+                    )
+                    db.add(db_content)
 
-                db_asset = Asset(
-                    id=str(uuid.uuid4()),
-                    project_id=brief.project_id,
-                    content_id=content_id,
-                    asset_type="FINAL_IMAGE",
-                    file_path=asset_path,
-                    file_url=asset_url,
-                    mime_type="image/png",
-                    width=design_spec.width,
-                    height=design_spec.height,
-                    file_size_bytes=len(rendered_bytes)
-                )
-                db.add(db_asset)
+                existing_asset = None
+                if content_id_override:
+                    existing_asset = db.query(Asset).filter(
+                        Asset.content_id == content_id,
+                        Asset.asset_type == "FINAL_IMAGE"
+                    ).first()
+
+                if existing_asset:
+                    existing_asset.file_path = asset_path
+                    existing_asset.file_url = asset_url
+                    existing_asset.width = design_spec.width
+                    existing_asset.height = design_spec.height
+                    existing_asset.file_size_bytes = len(rendered_bytes)
+                else:
+                    db.add(Asset(
+                        id=str(uuid.uuid4()),
+                        project_id=brief.project_id,
+                        content_id=content_id,
+                        asset_type="FINAL_IMAGE",
+                        file_path=asset_path,
+                        file_url=asset_url,
+                        mime_type="image/png",
+                        width=design_spec.width,
+                        height=design_spec.height,
+                        file_size_bytes=len(rendered_bytes)
+                    ))
                 db.commit()
 
                 self._write_generation_logs(

@@ -92,3 +92,17 @@ def get_batch_run(run_id: str, db: Session = Depends(get_db)):
         updated_at=run.updated_at,
         items=items
     )
+
+
+@router.post("/runs/{run_id}/resume", response_model=BatchRunOut)
+def resume_batch(
+    run_id: str,
+    background_tasks: BackgroundTasks,
+    db: Session = Depends(get_db)
+):
+    """Resumes a FAILED/interrupted batch run without regenerating completed items."""
+    run = db.query(BatchRun).filter(BatchRun.id == run_id).first()
+    if not run:
+        raise NotFoundError("BatchRun", run_id)
+    background_tasks.add_task(BatchGenerationService.execute_batch, run.id)
+    return run

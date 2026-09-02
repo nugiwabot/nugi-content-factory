@@ -42,9 +42,19 @@ async def lifespan(app: FastAPI):
     logger.info(f"Starting {settings.APP_NAME} (v{settings.APP_VERSION}) on {settings.HOST}:{settings.PORT}")
     init_db()
     _seed_knowledge_base()
+    _reconcile_interrupted_batches()
     yield
     # Shutdown
     logger.info(f"Shutting down {settings.APP_NAME} gracefully.")
+
+
+def _reconcile_interrupted_batches() -> None:
+    """Marks batch runs stuck in RUNNING (crash/restart) as FAILED and resumable."""
+    try:
+        from app.services.batch_generation_service import BatchGenerationService
+        BatchGenerationService.mark_interrupted_runs_failed()
+    except Exception:
+        logger.exception("Interrupted batch reconciliation failed (non-fatal).")
 
 
 def _seed_knowledge_base() -> None:
