@@ -3,8 +3,8 @@ import time
 import httpx
 from typing import Optional
 from app.providers.base import ImageProvider, ImageGenerationOutput
-from app.providers.mock_image import MockImageProvider
 from app.core.config import settings
+from app.core.errors import ProviderError
 from app.core.logging import logger
 
 
@@ -12,6 +12,7 @@ class OpenAIImageProvider(ImageProvider):
     """
     OpenAI-Compatible & OpenRouter Image Generation Provider.
     Supports DALL-E 3, DALL-E 2, and compatible /images/generations endpoints.
+    Fails loudly with ProviderError when credentials are missing or the API errors.
     """
     def __init__(
         self,
@@ -22,11 +23,17 @@ class OpenAIImageProvider(ImageProvider):
         self.api_key = (api_key or settings.OPENAI_API_KEY or settings.IMAGE_API_KEY or "").strip()
         self.base_url = (base_url or settings.IMAGE_BASE_URL or "https://api.openai.com/v1").rstrip("/")
         self.model = model or settings.IMAGE_MODEL or "dall-e-3"
-        self._fallback_provider = MockImageProvider()
 
     @property
     def provider_name(self) -> str:
         return f"OpenAIImageProvider({self.model})"
+
+    def _require_api_key(self) -> None:
+        if not self.api_key and "localhost" not in self.base_url:
+            raise ProviderError(
+                self.provider_name,
+                "OpenAI/OpenRouter image API key is not configured. Add it in Settings > Image Provider before generating."
+            )
 
     def generate_background(
         self,
@@ -36,10 +43,7 @@ class OpenAIImageProvider(ImageProvider):
         style_preset: Optional[str] = None
     ) -> ImageGenerationOutput:
         start_time = time.time()
-
-        if not self.api_key and "localhost" not in self.base_url:
-            logger.info(f"{self.provider_name}: API Key not configured. Falling back to MockImageProvider.")
-            return self._fallback_provider.generate_background(prompt, width, height, style_preset)
+        self._require_api_key()
 
         try:
             # Map dimensions to standard supported sizes
@@ -80,5 +84,7 @@ class OpenAIImageProvider(ImageProvider):
             )
 
         except Exception as e:
-            logger.warning(f"{self.provider_name} generation failed: {str(e)}. Falling back to MockImageProvider.")
-            return self._fallback_provider.generate_background(prompt, width, height, style_preset)
+            if isinstance(e, ProviderError):
+                raise
+            logger.error(f"{self.provider_name} generation failed: {str(e)}")
+            raise ProviderError(self.provider_name, f"OpenAI-compatible image generation failed: {str(e)}") from e

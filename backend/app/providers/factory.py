@@ -24,6 +24,11 @@ class ProviderFactory:
         p_type = (provider_type or cfg.get("provider") or settings.LLM_PROVIDER).lower()
 
         if p_type == "mock":
+            if settings.is_production and not settings.is_testing:
+                raise ProviderError(
+                    "MockLLMProvider",
+                    "Mock LLM provider is disabled in production. Configure a real provider in Settings > LLM Provider."
+                )
             return MockLLMProvider()
 
         elif p_type == "openrouter":
@@ -80,6 +85,11 @@ class ProviderFactory:
         p_type = (provider_type or cfg.get("provider") or settings.IMAGE_PROVIDER).lower()
 
         if p_type == "mock":
+            if settings.is_production and not settings.is_testing:
+                raise ProviderError(
+                    "MockImageProvider",
+                    "Mock image provider is disabled in production. Configure a real provider in Settings > Image Provider."
+                )
             return MockImageProvider()
 
         elif p_type == "flux":

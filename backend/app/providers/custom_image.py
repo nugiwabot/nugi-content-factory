@@ -3,8 +3,8 @@ import time
 import httpx
 from typing import Optional, Dict, Any
 from app.providers.base import ImageProvider, ImageGenerationOutput
-from app.providers.mock_image import MockImageProvider
 from app.core.config import settings
+from app.core.errors import ProviderError
 from app.core.logging import logger
 
 
@@ -12,6 +12,7 @@ class CustomImageProvider(ImageProvider):
     """
     Custom Image Generation API Provider Adapter.
     Supports Stable Diffusion WebUI (/sdapi/v1/txt2img), ComfyUI, or custom REST image services.
+    Fails loudly with ProviderError when the endpoint errors.
     """
     def __init__(
         self,
@@ -22,7 +23,6 @@ class CustomImageProvider(ImageProvider):
         self.api_key = (api_key or settings.IMAGE_API_KEY or "").strip()
         self.base_url = (base_url or settings.IMAGE_BASE_URL or "http://localhost:7860").rstrip("/")
         self.model = model or settings.IMAGE_MODEL or "custom-diffusion"
-        self._fallback_provider = MockImageProvider()
 
     @property
     def provider_name(self) -> str:
@@ -78,5 +78,7 @@ class CustomImageProvider(ImageProvider):
             )
 
         except Exception as e:
-            logger.warning(f"{self.provider_name} generation failed: {str(e)}. Falling back to MockImageProvider.")
-            return self._fallback_provider.generate_background(prompt, width, height, style_preset)
+            if isinstance(e, ProviderError):
+                raise
+            logger.error(f"{self.provider_name} generation failed: {str(e)}")
+            raise ProviderError(self.provider_name, f"Custom image generation failed: {str(e)}") from e

@@ -3,8 +3,8 @@ import time
 import httpx
 from typing import Dict, Any, Optional
 from app.providers.base import LLMProvider, LLMContentOutput
-from app.providers.mock_llm import MockLLMProvider
 from app.core.config import settings
+from app.core.errors import ProviderError
 from app.core.logging import logger
 
 
@@ -12,6 +12,7 @@ class GoogleLLMProvider(LLMProvider):
     """
     Google Gemini Direct API Provider Adapter.
     Supports Gemini 1.5 Pro, Gemini 1.5 Flash, Gemini 2.0 Flash via Google Generative Language REST API.
+    Fails loudly with ProviderError when credentials are missing or the API errors.
     """
     def __init__(
         self,
@@ -22,11 +23,17 @@ class GoogleLLMProvider(LLMProvider):
         self.api_key = (api_key or settings.GOOGLE_API_KEY or settings.LLM_API_KEY or "").strip()
         self.base_url = (base_url or "https://generativelanguage.googleapis.com/v1beta").rstrip("/")
         self.model = model or settings.GOOGLE_MODEL or "gemini-1.5-flash"
-        self._fallback_provider = MockLLMProvider()
 
     @property
     def provider_name(self) -> str:
         return f"GoogleLLMProvider({self.model})"
+
+    def _require_api_key(self) -> None:
+        if not self.api_key:
+            raise ProviderError(
+                self.provider_name,
+                "Google Gemini API key is not configured. Add it in Settings > LLM Provider before generating."
+            )
 
     def generate_content(
         self,
@@ -37,12 +44,7 @@ class GoogleLLMProvider(LLMProvider):
         brand_context: Optional[Dict[str, Any]] = None
     ) -> LLMContentOutput:
         start_time = time.time()
-
-        if not self.api_key:
-            logger.info(f"{self.provider_name}: API Key not configured. Falling back to MockLLMProvider.")
-            return self._fallback_provider.generate_content(
-                topic, target_audience, content_pillar, tone_of_voice, brand_context
-            )
+        self._require_api_key()
 
         try:
             system_prompt = (
@@ -100,10 +102,10 @@ class GoogleLLMProvider(LLMProvider):
             )
 
         except Exception as e:
-            logger.warning(f"{self.provider_name} request failed: {str(e)}. Falling back to MockLLMProvider.")
-            return self._fallback_provider.generate_content(
-                topic, target_audience, content_pillar, tone_of_voice, brand_context
-            )
+            if isinstance(e, ProviderError):
+                raise
+            logger.error(f"{self.provider_name} request failed: {str(e)}")
+            raise ProviderError(self.provider_name, f"Google Gemini request failed: {str(e)}") from e
 
     def complete(
         self,
@@ -112,8 +114,7 @@ class GoogleLLMProvider(LLMProvider):
         response_format: Optional[str] = None,
         max_tokens: int = 2000
     ) -> str:
-        if not self.api_key:
-            return self._fallback_provider.complete(system, user, response_format, max_tokens)
+        self._require_api_key()
 
         try:
             endpoint_url = f"{self.base_url}/models/{self.model}:generateContent?key={self.api_key}"
@@ -131,5 +132,7 @@ class GoogleLLMProvider(LLMProvider):
                 data = response.json()
             return data["candidates"][0]["content"]["parts"][0]["text"]
         except Exception as e:
-            logger.warning(f"{self.provider_name} complete() failed: {str(e)}. Falling back to mock.")
-            return self._fallback_provider.complete(system, user, response_format, max_tokens)
+            if isinstance(e, ProviderError):
+                raise
+            logger.error(f"{self.provider_name} complete() failed: {str(e)}")
+            raise ProviderError(self.provider_name, f"Google Gemini complete() failed: {str(e)}") from e

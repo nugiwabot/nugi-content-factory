@@ -2,9 +2,8 @@ import time
 import httpx
 import io
 from PIL import Image
-from typing import Optional, Dict, Any
+from typing import Optional
 from app.providers.base import ImageProvider, ImageGenerationOutput
-from app.providers.mock_image import MockImageProvider
 from app.core.config import settings
 from app.core.logging import logger
 from app.core.errors import ProviderError
@@ -15,7 +14,7 @@ class FluxImageProvider(ImageProvider):
     Flux / Black Forest Labs API Image Provider Adapter (Phase 3D-1).
     Generates high-fidelity visual photographic assets using BFL models (e.g. flux-2-klein-9b).
     Supports direct asynchronous task polling via polling_url.
-    Gracefully falls back to MockImageProvider if API credentials fail or network is offline.
+    Fails loudly with ProviderError when credentials are missing or the API errors.
     """
     def __init__(
         self,
@@ -34,11 +33,17 @@ class FluxImageProvider(ImageProvider):
         self.base_url = raw_base
 
         self.model = model or settings.FLUX_MODEL or "flux-2-klein-9b"
-        self._fallback_provider = MockImageProvider()
 
     @property
     def provider_name(self) -> str:
         return f"FluxImageProvider({self.model})"
+
+    def _require_api_key(self) -> None:
+        if not self.api_key:
+            raise ProviderError(
+                self.provider_name,
+                "FLUX / BFL API key is not configured. Add it in Settings > Image Provider before generating."
+            )
 
     def generate_background(
         self,
@@ -48,18 +53,9 @@ class FluxImageProvider(ImageProvider):
         style_preset: Optional[str] = None
     ) -> ImageGenerationOutput:
         start_time = time.time()
+        self._require_api_key()
 
-        # 1. Fallback check: if no API key is provided, gracefully delegate to MockImageProvider
-        if not self.api_key:
-            logger.info("FLUX_API_KEY not configured. Falling back gracefully to MockImageProvider.")
-            return self._fallback_provider.generate_background(
-                prompt=prompt,
-                width=width,
-                height=height,
-                style_preset=style_preset
-            )
-
-        # 2. Live Flux API invocation
+        # Live Flux API invocation
         try:
             headers = {
                 "x-key": self.api_key,
@@ -85,8 +81,11 @@ class FluxImageProvider(ImageProvider):
             with httpx.Client(timeout=60.0) as client:
                 resp = client.post(endpoint, json=payload, headers=headers)
                 if resp.status_code not in (200, 201, 202):
-                    logger.warning(f"Flux API returned status {resp.status_code}: {resp.text}. Falling back to mock.")
-                    return self._fallback_provider.generate_background(prompt, width, height, style_preset)
+                    logger.error(f"Flux API returned status {resp.status_code}: {resp.text[:300]}")
+                    raise ProviderError(
+                        self.provider_name,
+                        f"Flux API returned HTTP {resp.status_code}: {resp.text[:300]}"
+                    )
                 
                 res_data = resp.json()
                 image_url = res_data.get("result", {}).get("sample") or res_data.get("sample")
@@ -136,9 +135,14 @@ class FluxImageProvider(ImageProvider):
                             prompt_used=prompt
                         )
 
-            logger.warning("Flux generation did not return an image. Falling back to mock.")
-            return self._fallback_provider.generate_background(prompt, width, height, style_preset)
+            logger.error("Flux generation did not return an image after polling.")
+            raise ProviderError(
+                self.provider_name,
+                "Flux generation did not return an image after polling. Check the API response for moderation/errors."
+            )
 
         except Exception as e:
-            logger.warning(f"Flux generation exception: {str(e)}. Falling back gracefully to Mock.")
-            return self._fallback_provider.generate_background(prompt, width, height, style_preset)
+            if isinstance(e, ProviderError):
+                raise
+            logger.error(f"Flux generation exception: {str(e)}")
+            raise ProviderError(self.provider_name, f"Flux generation failed: {str(e)}") from e

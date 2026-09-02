@@ -1,5 +1,7 @@
 import io
+import pytest
 from PIL import Image
+from app.core.errors import ProviderError
 from app.schemas.design_spec import DesignSpecification, CompositionType, CTAStrategy, ImageStrategy, OverlayStrategy
 from app.schemas.visual_prompt import VisualPromptSpecification
 from app.providers.flux_image import FluxImageProvider
@@ -21,16 +23,13 @@ def test_visual_prompt_specification():
     assert "no text" in prompt
 
 
-def test_flux_image_provider_fallback():
-    # Without FLUX_API_KEY, provider should gracefully fall back to MockImageProvider
+def test_flux_image_provider_requires_key():
+    # Without FLUX_API_KEY, provider must fail loudly instead of returning mock content.
     provider = FluxImageProvider(api_key=None)
     assert "FluxImageProvider" in provider.provider_name
-    
-    out = provider.generate_background(prompt="Contemporary property", width=1080, height=1350)
-    assert out.image_bytes is not None
-    assert len(out.image_bytes) > 500
-    assert out.width == 1080
-    assert out.height == 1350
+
+    with pytest.raises(ProviderError):
+        provider.generate_background(prompt="Contemporary property", width=1080, height=1350)
 
 
 def test_provider_factory_flux_resolution():

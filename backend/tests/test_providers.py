@@ -24,27 +24,25 @@ def test_mock_llm_provider():
     assert output.latency_ms is not None
 
 
-def test_openrouter_llm_provider_fallback_safe():
+def test_openrouter_llm_provider_raises_without_key():
     provider = OpenRouterLLMProvider(api_key="")
-    output = provider.generate_content(
-        topic="3 Kesalahan Fatal Follow Up Leads Iklan Properti",
-        target_audience="Sales Manager & Agent Properti",
-        content_pillar="educational",
-        tone_of_voice="professional_authoritative"
-    )
-    assert output.headline is not None
-    assert output.body_caption is not None
+    with pytest.raises(ProviderError):
+        provider.generate_content(
+            topic="3 Kesalahan Fatal Follow Up Leads Iklan Properti",
+            target_audience="Sales Manager & Agent Properti",
+            content_pillar="educational",
+            tone_of_voice="professional_authoritative"
+        )
 
 
-def test_flux_image_provider_fallback_safe():
+def test_flux_image_provider_raises_without_key():
     provider = FluxImageProvider(api_key="")
-    output = provider.generate_background(
-        prompt="Modern luxury architectural background",
-        width=500,
-        height=500
-    )
-    assert output.image_bytes is not None
-    assert len(output.image_bytes) > 100
+    with pytest.raises(ProviderError):
+        provider.generate_background(
+            prompt="Modern luxury architectural background",
+            width=500,
+            height=500
+        )
 
 
 def test_mock_image_provider():

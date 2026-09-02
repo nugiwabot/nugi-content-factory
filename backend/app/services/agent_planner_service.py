@@ -7,6 +7,7 @@ from sqlalchemy.orm import Session
 from app.core.logging import logger
 from app.models.pillar import ContentPillar
 from app.providers.factory import ProviderFactory
+from app.providers.retry import call_with_retry
 from app.schemas.editorial_agent import ContentType
 from app.services.knowledge_service import KnowledgeService
 
@@ -80,30 +81,43 @@ class AgentPlannerService:
                     "Distribusikan pilar secara proporsional (60% edukasi/problematika, 25% bukti kerja, 15% penawaran). "
                     "Setiap item adalah satu poster + caption."
                 )
-                raw = llm.complete(system=system_prompt, user=user_prompt, response_format="json", max_tokens=2000)
+                raw = call_with_retry(
+                    llm.complete,
+                    system=system_prompt,
+                    user=user_prompt,
+                    response_format="json",
+                    max_tokens=2000
+                )
+            except Exception as e:
+                # Real provider infrastructure failures must surface, never silently
+                # degrade to a deterministic (low-quality) plan.
+                logger.error(f"AgentPlannerService LLM provider failed: {str(e)}")
+                raise
+            try:
                 raw = raw.strip()
                 if raw.startswith("```"):
                     raw = raw.split("```", 1)[1].rsplit("```", 1)[0].strip()
                     if raw.startswith("json"):
                         raw = raw[4:].strip()
                 data = json.loads(raw)
-                for it in data.get("items", [])[:count]:
-                    topic = (it.get("topic") or "").strip()
-                    if not topic:
-                        continue
-                    ct = (it.get("content_type") or "").strip().upper()
-                    if ct not in cls.VALID_CONTENT_TYPES:
-                        ct = None
-                    items.append({
-                        "topic": topic,
-                        "target_audience": (it.get("target_audience") or "Developer & Tim Marketing Properti").strip(),
-                        "pillar": cls._normalize_pillar(it.get("pillar"), pillar_index),
-                        "content_type": ct,
-                        "angle": (it.get("angle") or "").strip()
-                    })
             except Exception as e:
-                logger.warning(f"AgentPlannerService LLM planning failed: {str(e)}. Falling back to deterministic.")
-                items = []
+                logger.warning(f"AgentPlannerService LLM parse failed: {str(e)}. Falling back to deterministic.")
+                data = {"items": []}
+
+            for it in data.get("items", [])[:count]:
+                topic = (it.get("topic") or "").strip()
+                if not topic:
+                    continue
+                ct = (it.get("content_type") or "").strip().upper()
+                if ct not in cls.VALID_CONTENT_TYPES:
+                    ct = None
+                items.append({
+                    "topic": topic,
+                    "target_audience": (it.get("target_audience") or "Developer & Tim Marketing Properti").strip(),
+                    "pillar": cls._normalize_pillar(it.get("pillar"), pillar_index),
+                    "content_type": ct,
+                    "angle": (it.get("angle") or "").strip()
+                })
 
         # Deterministic fallback: rotate through seeded pillars, one brief per pillar.
         if not items:

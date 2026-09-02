@@ -3,8 +3,8 @@ import time
 import httpx
 from typing import Dict, Any, Optional
 from app.providers.base import LLMProvider, LLMContentOutput
-from app.providers.mock_llm import MockLLMProvider
 from app.core.config import settings
+from app.core.errors import ProviderError
 from app.core.logging import logger
 
 
@@ -12,6 +12,7 @@ class CustomLLMProvider(LLMProvider):
     """
     Custom HTTP REST Endpoint LLM Provider.
     Allows connecting arbitrary internal microservices, self-hosted LLMs, or custom gateways.
+    Fails loudly with ProviderError when the endpoint errors.
     """
     def __init__(
         self,
@@ -24,7 +25,6 @@ class CustomLLMProvider(LLMProvider):
         self.base_url = (base_url or settings.LLM_BASE_URL or "http://localhost:8080").rstrip("/")
         self.model = model or settings.LLM_MODEL or "custom-model"
         self.custom_headers = headers or {}
-        self._fallback_provider = MockLLMProvider()
 
     @property
     def provider_name(self) -> str:
@@ -80,10 +80,10 @@ class CustomLLMProvider(LLMProvider):
             )
 
         except Exception as e:
-            logger.warning(f"{self.provider_name} failed: {str(e)}. Falling back to MockLLMProvider.")
-            return self._fallback_provider.generate_content(
-                topic, target_audience, content_pillar, tone_of_voice, brand_context
-            )
+            if isinstance(e, ProviderError):
+                raise
+            logger.error(f"{self.provider_name} failed: {str(e)}")
+            raise ProviderError(self.provider_name, f"Custom LLM request failed: {str(e)}") from e
 
     def complete(
         self,
@@ -120,5 +120,7 @@ class CustomLLMProvider(LLMProvider):
                 return data["content"]
             return data if isinstance(data, str) else json.dumps(data)
         except Exception as e:
-            logger.warning(f"{self.provider_name} complete() failed: {str(e)}. Falling back to mock.")
-            return self._fallback_provider.complete(system, user, response_format, max_tokens)
+            if isinstance(e, ProviderError):
+                raise
+            logger.error(f"{self.provider_name} complete() failed: {str(e)}")
+            raise ProviderError(self.provider_name, f"Custom LLM complete() failed: {str(e)}") from e

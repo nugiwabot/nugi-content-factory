@@ -3,6 +3,7 @@ from typing import Optional, Dict, Any
 
 from app.core.logging import logger
 from app.providers.factory import ProviderFactory
+from app.providers.retry import call_with_retry
 
 
 class CopywriterService:
@@ -50,7 +51,20 @@ class CopywriterService:
         )
 
         try:
-            raw = llm.complete(system=system_prompt, user=user_prompt, response_format="json", max_tokens=1500)
+            raw = call_with_retry(
+                llm.complete,
+                system=system_prompt,
+                user=user_prompt,
+                response_format="json",
+                max_tokens=1500
+            )
+        except Exception as e:
+            # Real provider infrastructure failures must surface, never silently
+            # degrade to deterministic templates.
+            logger.error(f"CopywriterService LLM provider failed: {str(e)}")
+            raise
+
+        try:
             raw = raw.strip()
             if raw.startswith("```"):
                 raw = raw.split("```", 1)[1].rsplit("```", 1)[0].strip()

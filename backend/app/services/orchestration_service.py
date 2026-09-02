@@ -12,6 +12,7 @@ from app.models.generation_log import GenerationLog
 from app.models.job import GenerationJob
 
 from app.providers.factory import ProviderFactory
+from app.providers.retry import call_with_retry
 from app.rendering.engine import DeterministicRenderingEngine
 from app.services.job_service import JobService
 from app.services.qa_service import QAService
@@ -70,7 +71,8 @@ class OrchestrationService:
             JobService.update_progress(db, job, progress=25, status="RUNNING")
             llm_provider = ProviderFactory.get_llm_provider(llm_provider_type)
             
-            llm_output = llm_provider.generate_content(
+            llm_output = call_with_retry(
+                llm_provider.generate_content,
                 topic=topic,
                 target_audience=target_audience,
                 content_pillar=content_pillar,
@@ -95,7 +97,8 @@ class OrchestrationService:
             JobService.update_progress(db, job, progress=50, status="RUNNING")
             image_provider = ProviderFactory.get_image_provider(image_provider_type)
             
-            img_output = image_provider.generate_background(
+            img_output = call_with_retry(
+                image_provider.generate_background,
                 prompt=llm_output.visual_concept_prompt,
                 width=1080,
                 height=1080

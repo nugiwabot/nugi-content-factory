@@ -1,6 +1,7 @@
 from abc import ABC, abstractmethod
 from typing import Dict, Any, Optional, List
 from pydantic import BaseModel, Field
+from app.core.logging import logger
 
 
 class LLMContentOutput(BaseModel):
@@ -66,9 +67,13 @@ class LLMProvider(ABC):
         """
         Generic chat-completion-style reasoning method used by the agentic planner
         and copywriter. Returns raw text; when response_format='json' the text should
-        be pure JSON. Providers override this; the base returns an empty fallback.
+        be pure JSON. Real providers MUST override this. Providers that do not
+        override it return an empty payload instead of fabricating content.
         """
-        logger.warning(f"{self.provider_name} does not implement complete(); returning empty fallback.")
+        logger.warning(
+            f"{self.provider_name} does not implement complete(); returning empty payload. "
+            "This is a configuration error, not generated content."
+        )
         return "{}" if response_format == "json" else ""
 
     def test_connection(self) -> Dict[str, Any]:

@@ -3,8 +3,8 @@ import time
 import httpx
 from typing import Dict, Any, Optional
 from app.providers.base import LLMProvider, LLMContentOutput
-from app.providers.mock_llm import MockLLMProvider
 from app.core.config import settings
+from app.core.errors import ProviderError
 from app.core.logging import logger
 
 
@@ -12,7 +12,7 @@ class OpenRouterLLMProvider(LLMProvider):
     """
     OpenRouter LLM Provider Adapter.
     Enables calling OpenRouter models such as google/gemini-2.5-flash-lite for property content generation.
-    Gracefully falls back to MockLLMProvider if API credentials fail or network is unavailable.
+    Fails loudly with ProviderError when credentials are missing or the API errors.
     """
     def __init__(
         self,
@@ -31,11 +31,17 @@ class OpenRouterLLMProvider(LLMProvider):
             elif raw_model.startswith("claude"):
                 raw_model = f"anthropic/{raw_model}"
         self.model = raw_model
-        self._fallback_provider = MockLLMProvider()
 
     @property
     def provider_name(self) -> str:
         return f"OpenRouterLLMProvider({self.model})"
+
+    def _require_api_key(self) -> None:
+        if not self.api_key:
+            raise ProviderError(
+                self.provider_name,
+                "OpenRouter API key is not configured. Add it in Settings > LLM Provider before generating."
+            )
 
     def generate_content(
         self,
@@ -46,12 +52,7 @@ class OpenRouterLLMProvider(LLMProvider):
         brand_context: Optional[Dict[str, Any]] = None
     ) -> LLMContentOutput:
         start_time = time.time()
-
-        if not self.api_key:
-            logger.info("OPENROUTER_API_KEY not configured. Falling back to MockLLMProvider.")
-            return self._fallback_provider.generate_content(
-                topic, target_audience, content_pillar, tone_of_voice, brand_context
-            )
+        self._require_api_key()
 
         try:
             system_prompt = (
@@ -99,8 +100,11 @@ class OpenRouterLLMProvider(LLMProvider):
             with httpx.Client(timeout=45.0) as client:
                 resp = client.post(endpoint, json=payload, headers=headers)
                 if resp.status_code != 200:
-                    logger.warning(f"OpenRouter API returned status {resp.status_code}: {resp.text}. Falling back to mock.")
-                    return self._fallback_provider.generate_content(topic, target_audience, content_pillar, tone_of_voice, brand_context)
+                    logger.error(f"OpenRouter API returned status {resp.status_code}: {resp.text[:300]}")
+                    raise ProviderError(
+                        self.provider_name,
+                        f"OpenRouter API returned HTTP {resp.status_code}: {resp.text[:300]}"
+                    )
 
                 res_json = resp.json()
                 raw_content = res_json.get("choices", [{}])[0].get("message", {}).get("content", "{}")
@@ -123,10 +127,10 @@ class OpenRouterLLMProvider(LLMProvider):
                 )
 
         except Exception as e:
-            logger.warning(f"OpenRouter LLM call failed: {str(e)}. Falling back to MockLLMProvider.")
-            return self._fallback_provider.generate_content(
-                topic, target_audience, content_pillar, tone_of_voice, brand_context
-            )
+            if isinstance(e, ProviderError):
+                raise
+            logger.error(f"OpenRouter LLM call failed: {str(e)}")
+            raise ProviderError(self.provider_name, f"OpenRouter LLM call failed: {str(e)}") from e
 
     def complete(
         self,
@@ -135,8 +139,7 @@ class OpenRouterLLMProvider(LLMProvider):
         response_format: Optional[str] = None,
         max_tokens: int = 2000
     ) -> str:
-        if not self.api_key:
-            return self._fallback_provider.complete(system, user, response_format, max_tokens)
+        self._require_api_key()
 
         try:
             payload: Dict[str, Any] = {
@@ -161,10 +164,15 @@ class OpenRouterLLMProvider(LLMProvider):
             with httpx.Client(timeout=60.0) as client:
                 resp = client.post(endpoint, json=payload, headers=headers)
                 if resp.status_code != 200:
-                    logger.warning(f"OpenRouter complete() status {resp.status_code}: {resp.text[:200]}")
-                    return self._fallback_provider.complete(system, user, response_format, max_tokens)
+                    logger.error(f"OpenRouter complete() status {resp.status_code}: {resp.text[:300]}")
+                    raise ProviderError(
+                        self.provider_name,
+                        f"OpenRouter complete() returned HTTP {resp.status_code}: {resp.text[:300]}"
+                    )
                 data = resp.json()
             return data.get("choices", [{}])[0].get("message", {}).get("content", "")
         except Exception as e:
-            logger.warning(f"OpenRouter complete() failed: {str(e)}. Falling back to mock.")
-            return self._fallback_provider.complete(system, user, response_format, max_tokens)
+            if isinstance(e, ProviderError):
+                raise
+            logger.error(f"OpenRouter complete() failed: {str(e)}")
+            raise ProviderError(self.provider_name, f"OpenRouter complete() failed: {str(e)}") from e

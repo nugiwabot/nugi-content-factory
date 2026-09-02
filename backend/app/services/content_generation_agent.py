@@ -26,6 +26,7 @@ from app.rendering.compositing_engine import ProfessionalCompositingEngine
 from app.rendering.editorial_renderer import EditorialRenderer
 from app.services.visual_qa import VisualQAService
 from app.providers.factory import ProviderFactory
+from app.providers.retry import call_with_retry
 from app.models.content import Content
 from app.models.brief import ContentBrief
 from app.models.asset import Asset
@@ -45,7 +46,7 @@ class ContentGenerationAgent:
         self,
         brief: UserBriefInput,
         db: Optional[Session] = None,
-        image_provider_type: str = "flux",
+        image_provider_type: Optional[str] = None,
         debug_safezone: bool = False,
         skill_context: Optional[str] = None,
         brand_context: Optional[str] = None
@@ -54,6 +55,7 @@ class ContentGenerationAgent:
         Executes end-to-end editorial generation pipeline (Phase 3D-3 Safezone Enforcement):
         Brief -> Strategy -> Headline -> Caption -> Visual Concept -> Asset Plan ->
         13-Layer Compositing -> Visual QA -> Multi-Variant Planning -> DB Save.
+        image_provider_type defaults to the active configured provider (Settings > Image Provider).
         """
         logger.info(f"Starting AI Content & Art Direction generation for topic: {brief.topic}")
 
@@ -147,9 +149,10 @@ class ContentGenerationAgent:
         )
         plan = AssetCompositorService.build_composition_plan(concept, design_spec.accent_color_hex or "#8b5cf6")
 
-        # 7. Generate Background Asset (Flux with Mock Fallback)
+        # 7. Generate Background Asset (uses the configured provider; mock in dev/testing)
         img_provider = ProviderFactory.get_image_provider(image_provider_type)
-        bg_output = img_provider.generate_background(
+        bg_output = call_with_retry(
+            img_provider.generate_background,
             prompt=art_direction.image_prompt,
             width=design_spec.width,
             height=design_spec.height
@@ -223,8 +226,9 @@ class ContentGenerationAgent:
                 db.add(db_asset)
                 db.commit()
             except Exception as dbe:
-                logger.warning(f"DB persistence failed: {str(dbe)}. Proceeding in-memory.")
                 db.rollback()
+                logger.error(f"DB persistence failed for content generation: {str(dbe)}")
+                raise
 
         return ContentPackage(
             content_id=content_id,
@@ -321,7 +325,8 @@ class ContentGenerationAgent:
 
         # Generate fresh background and composite
         img_provider = ProviderFactory.get_image_provider()
-        bg_out = img_provider.generate_background(
+        bg_out = call_with_retry(
+            img_provider.generate_background,
             prompt=new_art.image_prompt,
             width=new_design_spec.width,
             height=new_design_spec.height
