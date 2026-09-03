@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="robots" content="noindex, nofollow">
+  <title>Demo Interaktif — Sistem Distribusi & Follow-Up Lead | Nugi</title>
+  <meta name="description" content="Demo interaktif simulasi sistem distribusi lead properti: lead masuk, rotasi otomatis ke sales, follow-up, dan progres manager. Data simulasi, bukan data pelanggan.">
+  <link rel="stylesheet" href="demo.css">
+</head>
+<body>
+
+  <div class="demo-banner" id="demoBanner"></div>
+
+  <!-- Navbar (reuse gaya website utama) -->
+  <header class="demo-navbar">
+    <div class="demo-nav-inner">
+      <a href="../" class="demo-brand">
+        <img src="../assets/brand/nugi_properti_logo.png" alt="NUGIPROPERTI" />
+      </a>
+      <nav class="demo-nav-links">
+        <a href="../demo" class="demo-nav-link active">Demo</a>
+        <a href="../#konsultasi" class="btn btn-primary btn-sm">Konsultasi Kebutuhan</a>
+      </nav>
+    </div>
+  </header>
+
+  <!-- Header Demo -->
+  <header class="demo-header">
+    <span class="demo-eyebrow">INTERACTIVE DEMO</span>
+    <h1>Lihat Bagaimana Lead Diproses oleh Sistem</h1>
+    <p>Simulasikan alur lead mulai dari masuk, distribusi ke sales, follow-up, hingga monitoring oleh manager.</p>
+    <span class="demo-mode-badge">● MODE DEMO — Data simulasi, bukan data pelanggan sebenarnya</span>
+  </header>
+
+  <main class="demo-container">
+
+    <!-- Flow indicator -->
+    <div class="demo-flow">
+      <span class="flow-node"><span class="flow-dot"></span>Lead Masuk</span>
+      <span class="flow-arrow">→</span>
+      <span class="flow-node"><span class="flow-dot"></span>Distribusi</span>
+      <span class="flow-arrow">→</span>
+      <span class="flow-node"><span class="flow-dot"></span>Sales Terima</span>
+      <span class="flow-arrow">→</span>
+      <span class="flow-node"><span class="flow-dot"></span>Follow-Up</span>
+      <span class="flow-arrow">→</span>
+      <span class="flow-node"><span class="flow-dot"></span>Manager</span>
+    </div>
+
+    <!-- 1. Lead Masuk -->
+    <section class="panel">
+      <h2><span class="step-badge">1</span> Lead Masuk</h2>
+      <div class="row">
+        <select id="selectSource" aria-label="Sumber lead">
+          <option value="Meta Ads">Meta Ads</option>
+          <option value="Landing Page">Landing Page</option>
+          <option value="Google Ads">Google Ads</option>
+        </select>
+        <button class="btn btn-primary" id="btnSendLead">Simulasi Lead Baru</button>
+        <button class="btn btn-ghost" id="btnReset">Reset</button>
+      </div>
+      <p class="hint">Mensimulasikan calon pembeli baru yang mengisi formulir iklan / landing page.</p>
+    </section>
+
+    <!-- 2. Distribusi -->
+    <section class="panel">
+      <h2><span class="step-badge">2</span> Distribusi Otomatis (Round-Robin)</h2>
+      <div id="distLog">Menunggu simulasi lead pertama&hellip;</div>
+    </section>
+
+    <!-- 3. Sales Menerima -->
+    <section class="panel">
+      <h2><span class="step-badge">3</span> Sales Menerima Lead (WhatsApp)</h2>
+      <div class="wa-card" id="waCard" hidden>
+        <div class="wa-head">
+          <span class="wa-avatar" id="waAvatar">S</span>
+          <span id="waHead"></span>
+        </div>
+        <div class="wa-body" id="waBody"></div>
+        <div class="wa-meta" id="waMeta"></div>
+      </div>
+      <p class="hint">Notifikasi ke nomor WhatsApp pribadi sales (simulasi tampilan).</p>
+    </section>
+
+    <!-- 4. Follow-up -->
+    <section class="panel">
+      <h2><span class="step-badge">4</span> Follow-Up &amp; Status</h2>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>ID</th><th>Prospek</th><th>Sumber</th><th>Sales</th><th>Status</th><th>Aksi</th>
+            </tr>
+          </thead>
+          <tbody id="leadsTable"></tbody>
+        </table>
+      </div>
+      <p class="hint">Klik "Lanjut" untuk menggerakkan lead: Lead Baru &rarr; Dihubungi &rarr; Survey Lokasi &rarr; Booking &rarr; Closing.</p>
+    </section>
+
+    <!-- 5. Manager -->
+    <section class="panel">
+      <h2><span class="step-badge">5</span> Manager Melihat Progres</h2>
+      <div id="statsBox"></div>
+      <p class="hint">Rekap otomatis per status dan per sales — tanpa rekap Excel manual.</p>
+    </section>
+
+    <!-- CTA bawah -->
+    <section class="panel demo-cta-panel">
+      <h2>Suka dengan alurnya?</h2>
+      <p style="color:var(--text-muted);max-width:520px;margin:0 auto 6px;">
+        Setiap bisnis memiliki cara kerja yang berbeda. Sistem Nugi dapat dikembangkan berdasarkan kebutuhan dan SOP tim Anda.
+      </p>
+      <div class="row">
+        <a href="https://wa.me/6287747584665?text=Halo%20Mas%20Nugi,%20saya%20tertarik%20dengan%20sistem%20distribusi%20lead%20yang%20baru%20saja%20saya%20lihat%20di%20demo." target="_blank" class="btn btn-primary">
+          <span>Konsultasi Kebutuhan</span>
+        </a>
+        <a href="../" class="btn btn-ghost">Kembali ke Website</a>
+      </div>
+    </section>
+
+  </main>
+
+  <footer class="demo-footer">
+    <p>&copy; 2026 Nugi Digital Studio &middot; WhatsApp: +62 877-4758-4665 &middot; Email: nugifathulfalah04@gmail.com</p>
+    <p><strong>Data simulasi</strong> — bukan data pelanggan asli &middot; Halaman demo untuk presentasi</p>
+  </footer>
+
+  <script src="demo.js"></script>
+</body>
+</html>

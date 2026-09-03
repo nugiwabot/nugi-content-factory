@@ -1,0 +1,446 @@
+/* ============================================================
+   NUGIPROPERTI — INTERACTIVE PRODUCT DEMO (Client Demo)
+   File: website/demo/demo.css
+   Menggunakan design language yang sama dengan website utama
+   (dark obsidian + violet-cyan gradient, Plus Jakarta Sans).
+   ============================================================ */
+
+:root {
+  --bg-dark: #070b14;
+  --bg-surface: #0c1220;
+  --bg-card: rgba(15, 23, 42, 0.75);
+  --bg-card-solid: #0d1424;
+  --border-card: rgba(255, 255, 255, 0.1);
+  --border-subtle: rgba(255, 255, 255, 0.07);
+  --text-main: #f8fafc;
+  --text-muted: #94a3b8;
+  --text-dim: #64748b;
+  --accent-violet: #8b5cf6;
+  --accent-cyan: #38bdf8;
+  --accent-emerald: #10b981;
+  --accent-amber: #f59e0b;
+  --accent-rose: #f43f5e;
+  --gradient-primary: linear-gradient(135deg, #8b5cf6 0%, #38bdf8 100%);
+  --font-sans: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
+  --font-mono: 'JetBrains Mono', monospace;
+  --radius-lg: 16px;
+  --radius-md: 12px;
+  --radius-sm: 8px;
+}
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+body {
+  font-family: var(--font-sans);
+  background: var(--bg-dark);
+  color: var(--text-main);
+  line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* ---------- Banner Mode Demo ---------- */
+.demo-banner {
+  background: linear-gradient(90deg, var(--accent-amber), var(--accent-rose));
+  color: #fff;
+  text-align: center;
+  font-size: 0.82rem;
+  font-weight: 700;
+  padding: 8px 16px;
+  letter-spacing: 0.02em;
+}
+
+/* ---------- Navbar (reuse gaya website utama) ---------- */
+.demo-navbar {
+  position: sticky;
+  top: 0;
+  z-index: 50;
+  background: rgba(7, 11, 20, 0.85);
+  backdrop-filter: blur(12px);
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.demo-nav-inner {
+  max-width: 960px;
+  margin: 0 auto;
+  padding: 12px 24px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.demo-brand img { height: 30px; display: block; }
+
+.demo-nav-links {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+}
+
+.demo-nav-link {
+  color: var(--text-muted);
+  text-decoration: none;
+  font-size: 0.9rem;
+  font-weight: 600;
+}
+
+.demo-nav-link:hover { color: var(--text-main); }
+.demo-nav-link.active { color: var(--accent-cyan); }
+
+/* ---------- Header Demo ---------- */
+.demo-header {
+  padding: 48px 24px 28px;
+  text-align: center;
+  background:
+    radial-gradient(circle at 50% 0%, rgba(139, 92, 246, 0.18), transparent 60%),
+    var(--bg-dark);
+}
+
+.demo-eyebrow {
+  display: inline-block;
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  letter-spacing: 0.14em;
+  color: var(--accent-cyan);
+  margin-bottom: 12px;
+}
+
+.demo-header h1 {
+  font-size: 1.8rem;
+  font-weight: 800;
+  letter-spacing: -0.01em;
+  line-height: 1.25;
+}
+
+.demo-header p {
+  color: var(--text-muted);
+  margin: 10px auto 0;
+  max-width: 560px;
+  font-size: 0.95rem;
+}
+
+.demo-mode-badge {
+  display: inline-block;
+  margin-top: 16px;
+  font-size: 0.74rem;
+  font-weight: 700;
+  color: var(--accent-amber);
+  border: 1px solid rgba(245, 158, 11, 0.35);
+  background: rgba(245, 158, 11, 0.12);
+  padding: 4px 14px;
+  border-radius: 9999px;
+}
+
+/* ---------- Container ---------- */
+.demo-container {
+  max-width: 960px;
+  margin: 0 auto;
+  padding: 8px 24px 40px;
+}
+
+/* ---------- Flow indicator ---------- */
+.demo-flow {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin: 20px 0 28px;
+  background: var(--bg-card);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-lg);
+  padding: 14px 18px;
+}
+
+.flow-node {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: var(--text-muted);
+}
+
+.flow-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--accent-violet);
+  box-shadow: 0 0 8px rgba(139, 92, 246, 0.6);
+}
+
+.flow-arrow { color: var(--text-dim); font-weight: 700; }
+
+/* ---------- Panels ---------- */
+.panel {
+  background: var(--bg-card);
+  border: 1px solid var(--border-card);
+  border-radius: var(--radius-lg);
+  padding: 24px;
+  margin-bottom: 20px;
+  backdrop-filter: blur(8px);
+}
+
+.panel h2 {
+  font-size: 1rem;
+  font-weight: 800;
+  margin-bottom: 16px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.step-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 28px;
+  height: 28px;
+  border-radius: 9999px;
+  background: var(--gradient-primary);
+  color: #fff;
+  font-size: 0.78rem;
+  font-weight: 800;
+}
+
+/* ---------- Form controls ---------- */
+.row { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; }
+
+select, .btn {
+  font-family: inherit;
+  font-size: 0.9rem;
+  border-radius: var(--radius-sm);
+}
+
+select {
+  background: var(--bg-surface);
+  color: var(--text-main);
+  border: 1px solid var(--border-card);
+  padding: 10px 12px;
+  flex: 1;
+  min-width: 170px;
+}
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  border: none;
+  cursor: pointer;
+  padding: 10px 18px;
+  font-weight: 700;
+  text-decoration: none;
+  transition: opacity 0.2s ease, transform 0.1s ease;
+}
+
+.btn:hover { opacity: 0.88; }
+.btn:active { transform: translateY(1px); }
+
+.btn-primary {
+  background: var(--gradient-primary);
+  color: #fff;
+}
+
+.btn-ghost {
+  background: transparent;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  color: var(--text-muted);
+}
+
+.hint { color: var(--text-dim); font-size: 0.8rem; margin-top: 12px; }
+
+/* ---------- Distribusi log ---------- */
+#distLog {
+  font-family: var(--font-mono);
+  font-size: 0.82rem;
+  background: rgba(0, 0, 0, 0.3);
+  border: 1px dashed rgba(139, 92, 246, 0.35);
+  border-radius: var(--radius-sm);
+  padding: 14px;
+  min-height: 46px;
+}
+
+/* ---------- Kartu Lead ---------- */
+.lead-card {
+  background: var(--bg-card-solid);
+  border: 1px solid var(--border-card);
+  border-radius: var(--radius-md);
+  padding: 14px 16px;
+  margin-top: 12px;
+}
+
+.lead-card .lc-title {
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--text-dim);
+  margin-bottom: 8px;
+}
+
+.lead-card .lc-name { font-weight: 800; font-size: 0.95rem; }
+.lead-card .lc-meta { font-size: 0.8rem; color: var(--text-muted); margin-top: 4px; }
+.lead-card .lc-meta span { display: block; }
+
+/* ---------- Kartu WhatsApp ---------- */
+.wa-card {
+  background: #075e54;
+  border-radius: var(--radius-md);
+  overflow: hidden;
+  max-width: 440px;
+  margin-top: 12px;
+}
+
+.wa-card[hidden] { display: none; }
+
+.wa-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: rgba(0, 0, 0, 0.2);
+  padding: 10px 14px;
+  font-weight: 700;
+  font-size: 0.9rem;
+}
+
+.wa-avatar {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: var(--gradient-primary);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.75rem;
+  font-weight: 800;
+  color: #fff;
+  flex-shrink: 0;
+}
+
+.wa-body {
+  padding: 14px;
+  font-size: 0.86rem;
+  background: #055148;
+}
+
+.wa-body p { margin-bottom: 6px; }
+.wa-body p:last-child { margin-bottom: 0; }
+
+.wa-meta {
+  padding: 8px 14px;
+  font-size: 0.73rem;
+  color: rgba(255, 255, 255, 0.75);
+  background: rgba(0, 0, 0, 0.15);
+}
+
+/* ---------- Tabel leads ---------- */
+.table-wrap { overflow-x: auto; }
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.84rem;
+  min-width: 640px;
+}
+
+th, td {
+  text-align: left;
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+th {
+  color: var(--text-dim);
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.btn-mini {
+  font-family: inherit;
+  font-size: 0.76rem;
+  padding: 6px 10px;
+  border-radius: var(--radius-sm);
+  border: 1px solid rgba(56, 189, 248, 0.4);
+  background: transparent;
+  color: var(--accent-cyan);
+  cursor: pointer;
+}
+
+.btn-mini:disabled { opacity: 0.4; cursor: default; }
+
+/* ---------- Status badge ---------- */
+.st {
+  display: inline-block;
+  padding: 3px 10px;
+  border-radius: 9999px;
+  font-size: 0.72rem;
+  font-weight: 700;
+}
+
+.st.lead-baru { background: rgba(148, 163, 184, 0.15); color: var(--text-muted); }
+.st.dihubungi { background: rgba(56, 189, 248, 0.15); color: var(--accent-cyan); }
+.st.survey-lokasi { background: rgba(139, 92, 246, 0.15); color: var(--accent-violet); }
+.st.booking { background: rgba(245, 158, 11, 0.15); color: var(--accent-amber); }
+.st.closing { background: rgba(16, 185, 129, 0.15); color: var(--accent-emerald); }
+
+/* ---------- Manager metrics ---------- */
+.metric-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.metric-card {
+  background: var(--bg-card-solid);
+  border: 1px solid var(--border-card);
+  border-radius: var(--radius-md);
+  padding: 14px 16px;
+}
+
+.metric-card .m-value {
+  font-size: 1.5rem;
+  font-weight: 800;
+  color: #fff;
+}
+
+.metric-card .m-label {
+  font-size: 0.72rem;
+  color: var(--text-dim);
+}
+
+#statsBox { font-size: 0.88rem; }
+#statsBox p { margin-bottom: 8px; }
+.muted { color: var(--text-dim); }
+
+/* ---------- CTA bawah ---------- */
+.demo-cta-panel {
+  text-align: center;
+  background:
+    radial-gradient(circle at 50% 0%, rgba(56, 189, 248, 0.14), transparent 60%),
+    var(--bg-card);
+}
+
+.demo-cta-panel h2 { justify-content: center; font-size: 1.25rem; }
+.demo-cta-panel .row { justify-content: center; margin-top: 6px; }
+
+/* ---------- Footer ---------- */
+.demo-footer {
+  text-align: center;
+  padding: 22px 20px;
+  color: var(--text-dim);
+  font-size: 0.78rem;
+  border-top: 1px solid var(--border-subtle);
+}
+
+.demo-footer p { margin-bottom: 4px; }
+
+/* ---------- Responsive ---------- */
+@media (max-width: 640px) {
+  .demo-header h1 { font-size: 1.45rem; }
+  .demo-flow { gap: 6px; padding: 12px; }
+  .flow-node { font-size: 0.7rem; }
+  .demo-nav-inner { padding: 10px 16px; }
+  .demo-container { padding: 4px 16px 32px; }
+  .panel { padding: 18px; }
+}

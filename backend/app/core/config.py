@@ -116,15 +116,22 @@ class Settings(BaseSettings):
     def knowledge_source_dir(self) -> Optional[Path]:
         """
         Resolves the read-only business knowledge repository directory.
-        Explicit KNOWLEDGE_SOURCE_PATH wins; otherwise the sibling folder of the
-        application repo (freelance-nugi-software-engineer) is auto-detected.
+        Priority:
+        1. Explicit KNOWLEDGE_SOURCE_PATH (if it is a valid directory).
+        2. The merged in-repo folder `<repo>/nugi-business` (single-repo layout).
+        3. Legacy sibling folder `../freelance-nugi-software-engineer`.
         """
         if self.KNOWLEDGE_SOURCE_PATH:
             p = Path(self.KNOWLEDGE_SOURCE_PATH).expanduser()
             if p.is_dir():
                 return p.resolve()
 
-        sibling = Path(__file__).resolve().parents[3].parent / "freelance-nugi-software-engineer"
+        repo_root = Path(__file__).resolve().parents[3]
+        merged = repo_root / "nugi-business"
+        if merged.is_dir():
+            return merged.resolve()
+
+        sibling = repo_root.parent / "freelance-nugi-software-engineer"
         if sibling.is_dir():
             return sibling.resolve()
         return None
