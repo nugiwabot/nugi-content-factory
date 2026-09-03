@@ -7,7 +7,7 @@ from app.core.logging import logger
 db_url = settings.effective_database_url
 connect_args = {}
 if db_url.startswith("sqlite"):
-    connect_args = {"check_same_thread": False}
+    connect_args = {"check_same_thread": False, "timeout": 30}
 
 engine = create_engine(
     db_url,

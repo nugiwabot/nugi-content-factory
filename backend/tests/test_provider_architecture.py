@@ -69,8 +69,9 @@ def test_api_get_provider_settings():
     assert "flux" in data["supported_image_providers"]
 
 
-def test_api_update_provider_settings():
+def test_api_update_provider_settings(monkeypatch):
     """Verify POST /api/v1/settings/providers updates configuration at runtime."""
+    monkeypatch.setattr(type(settings), "save_persistent_settings", lambda self, data: None)
     payload = {
         "llm": {
             "provider": "mock",

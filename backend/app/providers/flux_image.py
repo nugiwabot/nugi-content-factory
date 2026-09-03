@@ -96,7 +96,8 @@ class FluxImageProvider(ImageProvider):
                 if not image_url and (polling_url or task_id):
                     poll_endpoint = polling_url or f"{self.base_url}/get_result?id={task_id}"
                     logger.info(f"Polling Flux generation task: {poll_endpoint}")
-                    for _ in range(15):
+                    # Poll up to 60 seconds (30 attempts * 2.0s)
+                    for _ in range(30):
                         time.sleep(2.0)
                         poll_resp = client.get(poll_endpoint, headers=headers)
                         if poll_resp.status_code == 200:

@@ -49,9 +49,10 @@ frontend/.vite/
 *.db
 storage/assets/*
 !storage/assets/.gitkeep
+backend/storage/assets/*
+!backend/storage/assets/.gitkeep
 release/
 scratch/
-
 
 # Local runtime provider credentials (entered via Settings UI)
 backend/config/provider_settings.json

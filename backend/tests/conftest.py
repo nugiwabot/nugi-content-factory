@@ -9,6 +9,13 @@ from fastapi.testclient import TestClient
 os.environ["APP_ENV"] = "testing"
 os.environ["DATABASE_URL"] = "sqlite:///:memory:"
 os.environ["STORAGE_BASE_DIR"] = "./storage/test_assets"
+os.environ["LLM_PROVIDER"] = "mock"
+os.environ["IMAGE_PROVIDER"] = "mock"
+os.environ["FLUX_API_KEY"] = ""
+os.environ["OPENAI_API_KEY"] = ""
+os.environ["OPENROUTER_API_KEY"] = ""
+os.environ["ANTHROPIC_API_KEY"] = ""
+os.environ["GOOGLE_API_KEY"] = ""
 
 from app.database import Base, get_db
 from app.main import create_app
