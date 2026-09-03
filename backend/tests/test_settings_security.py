@@ -45,6 +45,26 @@ def test_post_new_key_updates_secret(client, monkeypatch):
     assert "sk-brand-new-key-abc" not in r.text
 
 
+def test_post_updates_provider_model(client, monkeypatch):
+    monkeypatch.setattr(type(settings), "save_persistent_settings", lambda self, data: None)
+    monkeypatch.setattr(settings, "LLM_PROVIDER", "openai")
+    monkeypatch.setattr(settings, "IMAGE_PROVIDER", "flux")
+
+    r = client.post("/api/v1/settings/providers", json={
+        "llm": {"provider": "openai", "base_url": "https://ai.sumopod.com/v1",
+                "api_key": "sk-real-key-123", "model": "gemini/gemini-3.5-flash-lite"},
+        "image": {"provider": "flux", "endpoint_url": "https://api.bfl.ai/v1",
+                  "api_key": "bfl-real-key-456", "model": "flux-pro-1.1"}
+    })
+    assert r.status_code == 200
+    data = r.json()
+    assert data["llm"]["model"] == "gemini/gemini-3.5-flash-lite"
+    assert data["image"]["model"] == "flux-pro-1.1"
+    assert settings.OPENAI_MODEL == "gemini/gemini-3.5-flash-lite"
+    assert settings.FLUX_MODEL == "flux-pro-1.1"
+    assert settings.OPENAI_BASE_URL == "https://ai.sumopod.com/v1"
+
+
 def test_docs_disabled_in_production(monkeypatch):
     monkeypatch.setattr(settings, "APP_ENV", "production")
     app = main_module.create_app()

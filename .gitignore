@@ -52,3 +52,6 @@ storage/assets/*
 release/
 scratch/
 
+
+# Local runtime provider credentials (entered via Settings UI)
+backend/config/provider_settings.json

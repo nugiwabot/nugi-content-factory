@@ -20,6 +20,14 @@ def test_pricing_image_models():
     assert estimate_image_cost("flux-2-klein-9b") == 0.04
     assert estimate_image_cost("dall-e-3") == 0.08
     assert estimate_image_cost("totally-unknown-model") is None
+    assert estimate_image_cost("flux-pro-1.1") == 0.04
+
+
+def test_pricing_real_live_models():
+    # Models actually used in acceptance testing (sumopod gemini + BFL flux-pro-1.1).
+    llm = estimate_llm_cost("gemini/gemini-3.5-flash-lite", tokens_in=1000, tokens_out=500)
+    assert llm is not None and llm > 0
+    assert estimate_image_cost("flux-pro-1.1") == 0.04
 
 
 def test_mock_providers_report_zero_cost():

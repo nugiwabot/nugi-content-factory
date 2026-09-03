@@ -95,6 +95,12 @@ def update_provider_settings(payload: ProviderSettingsUpdateRequest):
             settings.LLM_PROVIDER = payload.llm.provider
         if payload.llm.base_url:
             settings.LLM_BASE_URL = payload.llm.base_url
+            if payload.llm.provider == "openrouter":
+                settings.OPENROUTER_BASE_URL = payload.llm.base_url
+            elif payload.llm.provider == "openai":
+                settings.OPENAI_BASE_URL = payload.llm.base_url
+            elif payload.llm.provider == "anthropic":
+                settings.ANTHROPIC_BASE_URL = payload.llm.base_url
         resolved_llm_key = _resolve_api_key(payload.llm.api_key, settings.LLM_API_KEY)
         if resolved_llm_key != settings.LLM_API_KEY:
             settings.LLM_API_KEY = resolved_llm_key
@@ -106,6 +112,16 @@ def update_provider_settings(payload: ProviderSettingsUpdateRequest):
                 settings.ANTHROPIC_API_KEY = resolved_llm_key
             elif payload.llm.provider == "google":
                 settings.GOOGLE_API_KEY = resolved_llm_key
+        if payload.llm.model:
+            settings.LLM_MODEL = payload.llm.model
+            if payload.llm.provider == "openrouter":
+                settings.OPENROUTER_MODEL = payload.llm.model
+            elif payload.llm.provider == "openai":
+                settings.OPENAI_MODEL = payload.llm.model
+            elif payload.llm.provider == "anthropic":
+                settings.ANTHROPIC_MODEL = payload.llm.model
+            elif payload.llm.provider == "google":
+                settings.GOOGLE_MODEL = payload.llm.model
 
     if payload.image:
         if payload.image.provider:
@@ -120,6 +136,10 @@ def update_provider_settings(payload: ProviderSettingsUpdateRequest):
             settings.IMAGE_API_KEY = resolved_img_key
             if payload.image.provider == "flux":
                 settings.FLUX_API_KEY = resolved_img_key
+        if payload.image.model:
+            settings.IMAGE_MODEL = payload.image.model
+            if payload.image.provider == "flux":
+                settings.FLUX_MODEL = payload.image.model
 
     # Save to persistent storage file
     settings.save_persistent_settings({

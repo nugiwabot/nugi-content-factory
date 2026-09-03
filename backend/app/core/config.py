@@ -175,6 +175,9 @@ class Settings(BaseSettings):
 
     def load_persistent_settings(self) -> None:
         """Loads user settings from persistent JSON file if available."""
+        if self.is_testing:
+            # Tests must never inherit real provider credentials from the local machine.
+            return
         settings_file = self.config_dir / "provider_settings.json"
         if settings_file.exists():
             try:
@@ -186,6 +189,12 @@ class Settings(BaseSettings):
                     self.LLM_PROVIDER = llm["provider"]
                 if llm.get("base_url"):
                     self.LLM_BASE_URL = llm["base_url"]
+                    if self.LLM_PROVIDER == "openrouter":
+                        self.OPENROUTER_BASE_URL = llm["base_url"]
+                    elif self.LLM_PROVIDER == "openai":
+                        self.OPENAI_BASE_URL = llm["base_url"]
+                    elif self.LLM_PROVIDER == "anthropic":
+                        self.ANTHROPIC_BASE_URL = llm["base_url"]
                 if llm.get("api_key"):
                     self.LLM_API_KEY = llm["api_key"]
                     if self.LLM_PROVIDER == "openrouter":
@@ -196,6 +205,12 @@ class Settings(BaseSettings):
                     self.LLM_MODEL = llm["model"]
                     if self.LLM_PROVIDER == "openrouter":
                         self.OPENROUTER_MODEL = llm["model"]
+                    elif self.LLM_PROVIDER == "openai":
+                        self.OPENAI_MODEL = llm["model"]
+                    elif self.LLM_PROVIDER == "anthropic":
+                        self.ANTHROPIC_MODEL = llm["model"]
+                    elif self.LLM_PROVIDER == "google":
+                        self.GOOGLE_MODEL = llm["model"]
 
                 img = data.get("image", {})
                 if img.get("provider"):
@@ -215,6 +230,8 @@ class Settings(BaseSettings):
 
     def save_persistent_settings(self, data: Dict[str, Any]) -> None:
         """Saves user provider settings persistently to disk."""
+        if self.is_testing:
+            return
         settings_file = self.config_dir / "provider_settings.json"
         try:
             with open(settings_file, "w", encoding="utf-8") as f:

@@ -12,6 +12,8 @@ from typing import Dict, Optional, Tuple
 # LLM price table: model substring -> (USD per 1M input tokens, USD per 1M output tokens)
 # Substrings are matched case-insensitively against "provider/model".
 LLM_PRICES: Dict[str, Tuple[float, float]] = {
+    "gemini-3.5-flash-lite": (0.30, 2.50),
+    "gemini-3.1-flash-lite": (0.30, 2.50),
     "gemini-2.5-flash-lite": (0.30, 2.50),
     "gemini-2.0-flash": (0.10, 0.40),
     "gemini-1.5-flash": (0.075, 0.30),
@@ -26,9 +28,12 @@ LLM_PRICES: Dict[str, Tuple[float, float]] = {
 
 # Image price table: model substring -> (USD per image)
 IMAGE_PRICES: Dict[str, float] = {
+    "flux-pro-1.1": 0.04,
+    "flux-1.1-pro": 0.04,
     "flux-2-klein-9b": 0.04,
-    "flux-1.1-pro": 0.06,
+    "flux-1-dev": 0.03,
     "flux-dev": 0.025,
+    "flux-1-schnell": 0.003,
     "flux-schnell": 0.003,
     "dall-e-3": 0.08,
     "dall-e-2": 0.02,
