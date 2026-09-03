@@ -22,7 +22,7 @@ def _write_tree(root):
     )
     (root / "docs" / "PRODUCT.md").write_text("# Product\nLayanan CRM Properti harga mulai 7.5jt.", encoding="utf-8")
     (root / "README.md").write_text("# Internal readme\nStrategi internal rahasia.", encoding="utf-8")
-    (root / "business" / "sales" / "WARM_OUTREACH_EXECUTION.md").write_text("# Sales script\nTemplate WA rahasia.", encoding="utf-8")
+    (root / "business" / "sales" / "WARM_OUTREACH_EXECUTION.md").write_text("# Sales script\nTemplate WA rahasia untuk prospek hangat.", encoding="utf-8")
     (root / "business" / "finance" / "REVENUE_LEDGER.md").write_text("# Finance\nPendapatan Rp 0.", encoding="utf-8")
 
 
@@ -69,6 +69,23 @@ def test_status_reports_source(knowledge_tree):
     assert status["active"] is True
     assert status["core_docs"] >= 4
     assert "supporting_docs" in status
+    assert "private_docs" in status
+
+
+def test_assistant_context_includes_private_but_not_exclude(knowledge_tree):
+    context = KnowledgeSource.assistant_context("outreach whatsapp ke prospek hangat")
+    assert "Sales script" in context
+    assert "KONTEKS INTERNAL PRIVAT" in context
+    # EXCLUDE (finance ledger) must never appear anywhere.
+    assert "REVENUE_LEDGER" not in context
+    assert "Pendapatan" not in context
+
+
+def test_core_and_supporting_never_leak_private(knowledge_tree):
+    core = KnowledgeSource.core_context()
+    supporting = KnowledgeSource.supporting_for_topic("outreach whatsapp sales properti")
+    assert "rahasia untuk prospek hangat" not in core
+    assert "rahasia untuk prospek hangat" not in supporting
 
 
 def test_knowledge_service_merges_external_context(db_session, knowledge_tree):

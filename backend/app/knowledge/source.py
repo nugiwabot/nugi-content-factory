@@ -12,7 +12,7 @@ from typing import Dict, List, Optional
 
 from app.core.config import settings
 from app.core.logging import logger
-from app.knowledge.manifest import category_for, tags_for, CORE, SUPPORTING, EXCLUDE
+from app.knowledge.manifest import category_for, tags_for, CORE, SUPPORTING, PRIVATE, EXCLUDE
 
 _EMAIL_RE = re.compile(r"[\w.+-]+@[\w-]+\.[\w.-]+")
 _PHONE_RE = re.compile(r"(?:\+?62|0)8\d{7,13}")
@@ -31,6 +31,7 @@ class _KnowledgeIndex:
         self._source_dir: Optional[Path] = None
         self._core_docs: List[str] = []
         self._supporting: Dict[str, Dict[str, object]] = {}
+        self._private_docs: Dict[str, Dict[str, object]] = {}
         self._loaded = False
 
     def _sanitize(self, text: str) -> str:
@@ -43,6 +44,7 @@ class _KnowledgeIndex:
     def _read_markdown(self, root: Path) -> None:
         self._core_docs = []
         self._supporting = {}
+        self._private_docs = {}
         for md in root.rglob("*.md"):
             rel = md.relative_to(root).as_posix()
             category = category_for(rel)
@@ -58,6 +60,8 @@ class _KnowledgeIndex:
                 self._core_docs.append(f"### {rel}\n{content}")
             elif category == SUPPORTING:
                 self._supporting[rel] = {"tags": tags_for(rel), "text": content}
+            elif category == PRIVATE:
+                self._private_docs[rel] = {"tags": tags_for(rel), "text": content}
 
     def load(self, force: bool = False) -> bool:
         source_dir = settings.knowledge_source_dir
@@ -71,7 +75,8 @@ class _KnowledgeIndex:
         self._loaded = True
         logger.info(
             f"Knowledge source indexed from '{source_dir}': "
-            f"{len(self._core_docs)} core, {len(self._supporting)} supporting docs."
+            f"{len(self._core_docs)} core, {len(self._supporting)} supporting, "
+            f"{len(self._private_docs)} private docs."
         )
         return True
 
@@ -80,6 +85,7 @@ class _KnowledgeIndex:
         self._source_dir = None
         self._core_docs = []
         self._supporting = {}
+        self._private_docs = {}
 
     def refresh(self) -> bool:
         self.clear()
@@ -120,6 +126,53 @@ class _KnowledgeIndex:
             parts.append(f"### {rel}\n{self._supporting[rel]['text']}")
         return "\n\n".join(parts)
 
+    def _match_private(self, topic: str, limit: int = 4) -> List[str]:
+        """Returns the most relevant PRIVATE doc texts for assistant context."""
+        if not self.load():
+            return []
+        topic_tokens = set(self._tokenize(topic))
+        scored: List[tuple] = []
+        for rel, entry in self._private_docs.items():
+            tags = entry["tags"] or []
+            text = str(entry["text"])
+            haystack_tokens = set(self._tokenize(" ".join(tags))) | set(self._tokenize(text))
+            overlap = len(topic_tokens & haystack_tokens)
+            scored.append((overlap, rel))
+        scored.sort(key=lambda x: -x[0])
+        return [rel for ov, rel in scored[:limit] if ov > 0]
+
+    def assistant_context(self, topic: str, private_limit: int = 4) -> str:
+        """
+        Builds the full context block for the PERSONAL assistant: CORE identity
+        + topic-matched SUPPORTING + topic-matched PRIVATE (sales/pricing/ops).
+        PRIVATE content is explicitly labelled so callers can keep it out of
+        anything that will be published.
+        """
+        if not self.load():
+            return ""
+        parts: List[str] = []
+
+        core = self.core_context()
+        if core:
+            parts.append("## KONTEKS BISNIS (CORE)\n" + core[:12000])
+
+        supporting = self.supporting_for_topic(topic, limit=3)
+        if supporting:
+            parts.append("## KONTEKS TOPIK (SUPPORTING)\n" + supporting)
+
+        matched_private = self._match_private(topic, limit=private_limit)
+        if matched_private:
+            priv_parts = []
+            for rel in matched_private:
+                priv_parts.append(f"### {rel}\n{self._private_docs[rel]['text']}")
+            parts.append(
+                "## KONTEKS INTERNAL PRIVAT (HANYA UNTUK ASISTEN PRIBADI NUGI)\n"
+                "Informasi ini TIDAK BOLEH dimasukkan ke konten yang dipublikasikan "
+                "(postingan, caption, artikel website).\n" + "\n\n".join(priv_parts)
+            )
+
+        return "\n\n".join(parts)
+
     @staticmethod
     def _tokenize(text: str) -> List[str]:
         return [t for t in re.findall(r"[a-zA-Z0-9]+", (text or "").lower()) if len(t) > 2]
@@ -147,6 +200,7 @@ class KnowledgeSource:
             "source_path": str(_index.source_path) if _index.source_path else None,
             "core_docs": len(_index._core_docs),
             "supporting_docs": len(_index._supporting),
+            "private_docs": len(_index._private_docs),
         }
 
     @staticmethod
@@ -183,3 +237,7 @@ class KnowledgeSource:
     @staticmethod
     def supporting_for_topic(topic: str, pillar: Optional[str] = None, limit: int = 3) -> str:
         return _index.supporting_for_topic(topic, pillar, limit)
+
+    @staticmethod
+    def assistant_context(topic: str, private_limit: int = 4) -> str:
+        return _index.assistant_context(topic, private_limit)

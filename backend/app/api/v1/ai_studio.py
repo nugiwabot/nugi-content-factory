@@ -27,8 +27,10 @@ def handle_agentic_chat_endpoint(
     db: Session = Depends(get_db)
 ):
     """
-    Conversational Copilot Endpoint.
-    Analyzes user intent, provides consulting / greetings, or orchestrates end-to-end content generation.
+    Nugi Assistant conversational endpoint.
+    Knowledge-grounded personal freelance assistant: answers business questions,
+    helps write copy/articles/proposals, handles sales objections, or routes to
+    single/bulk content generation + deterministic rendering.
     """
     return agent.handle_conversational_chat(req=req, db=db)
 
