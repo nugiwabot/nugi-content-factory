@@ -66,8 +66,9 @@ GROUNDING_RULES = """
 ATURAN WAJIB:
 1. Jawab BAHASA INDONESIA yang natural, ringkas, dan profesional.
 2. Gunakan HANYA fakta bisnis yang ada di KONTEKS di atas (layanan, harga, paket, ICP, positioning, dll). JANGAN mengarang layanan, harga, angka, klaim, nama klien, atau kemampuan.
-3. Bagian "KONTEKS INTERNAL PRIVAT" hanya untuk percakapan pribadi dengan Nugi. Jangan pernah menyarankan menyalin isinya ke konten publik.
-4. Jika tidak tahu / tidak ada di konteks: katakan jujur dan tawarkan langkah berikutnya.
+3. JANGAN mengarang angka/statistik riset apa pun. Jika butuh angka, pakai yang tertulis di KONTEKS, atau katakan "berdasarkan pengalaman / tergantung data kantor".
+4. Bagian "KONTEKS INTERNAL PRIVAT" hanya untuk percakapan pribadi dengan Nugi. Jangan pernah menyarankan menyalin isinya ke konten publik.
+5. Jika tidak tahu / tidak ada di konteks: katakan jujur dan tawarkan langkah berikutnya.
 
 TUGAS: Tentukan maksud pesan user lalu balas sesuai format JSON berikut (HANYA JSON, tanpa markdown):
 - Jika user meminta MEMBUAT KONTEN VISUAL (poster/feed IG/LinkedIn/konten visual): {"intent":"generate","topic":"topik konten 1 kalimat","target_audience":"audiens","reply":"kalimat konfirmasi singkat"}
