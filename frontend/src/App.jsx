@@ -114,7 +114,7 @@ export default function App() {
 
         {loading ? (
           <div style={{ padding: '40px', textAlign: 'center', color: 'var(--text-muted)' }}>
-            Memuat Sistem Nugi Content Factory...
+            Memuat Sistem Nugi Assistant...
           </div>
         ) : (
           <>

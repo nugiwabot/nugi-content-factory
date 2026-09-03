@@ -34,14 +34,15 @@ export default function AIContentStudio({ currentProject }) {
     {
       id: 'welcome',
       role: 'agent',
-      content: 'Halo Mas Nugi! Saya **Nugi AI Content Copilot**.\n\nSaya siap membantu Anda mendiskusikan strategi konten properti atau langsung membuat poster 1080x1350 siap posting (edukasi investasi, tips follow-up, studi kasus rukost, perbandingan SHM vs Girik, dll.).\n\nGunakan mode **Chat** untuk diskusi, **Plan** untuk meminta agent merencanakan banyak konten dari satu goal, atau **Bulk** untuk menempelkan banyak topik sekaligus.',
+      content: 'Halo Mas Nugi! Saya **Asisten Nugi** — asisten pribadi untuk pekerjaan freelance software engineering kamu.\n\nSaya memahami bisnis, layanan, harga, dan materi yang ada di repo `freelance-nugi-software-engineer` + website nugi.biz.id. Saya bisa:\n• Menjawab pertanyaan seputar bisnis & layanan (paket, harga, alur kerja)\n• Membantu menulis: copy website, artikel SEO, case study, proposal/SOW\n• Membantu persiapan sales: discovery, jawab keberatan, follow-up\n• Membuat **1 konten visual** 1080×1350 siap posting (IG/LinkedIn)\n• Memandu pembuatan **konten massal** (tab Bulk)\n\nGunakan mode **Chat** untuk diskusi, **Plan** untuk merencanakan banyak konten dari satu goal, atau **Bulk** untuk menempelkan banyak topik sekaligus.',
       timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
       status: 'completed',
       suggestions: [
-        { label: 'Leads Boncos Closing Nol', prompt: 'Kenapa leads iklan properti banyak tapi closing tetap rendah?' },
-        { label: 'Edukasi SHM vs Girik', prompt: 'Edukasi bahaya membeli tanah tanpa sertifikat SHM untuk investor pemula' },
-        { label: '3 Kesalahan Follow-Up', prompt: '3 kesalahan follow-up yang membuat calon pembeli properti hilang tanpa kabar' },
-        { label: 'Cash Flow vs Capital Gain', prompt: 'Investasi properti: Lebih menguntungkan cash flow rukost atau capital gain tanah kosong?' }
+        { label: 'Jelaskan layanan & harga', prompt: 'Jelaskan layanan freelance Nugi, paket harga, dan cara kerja dari awal sampai handover secara ringkas.' },
+        { label: 'Draft proposal developer', prompt: 'Bantu saya membuat draft proposal singkat untuk developer perumahan yang ingin merapikan distribusi leads tim sales-nya.' },
+        { label: 'Artikel SEO distribusi leads', prompt: 'Buat draft artikel SEO: Cara otomatis membagi leads iklan ke WhatsApp sales.' },
+        { label: 'Jawab keberatan harga', prompt: 'Klien bilang investasinya Rp5 juta kemahalan. Tolong bantu saya menjawab dengan tenang dan persuasif.' },
+        { label: 'Konten IG 1 postingan', prompt: 'Buatkan konten tentang kenapa leads iklan properti hangus karena respon lambat.' }
       ]
     }
   ]);
@@ -66,11 +67,11 @@ export default function AIContentStudio({ currentProject }) {
   const fileInputRef = useRef(null);
 
   const quickPrompts = [
-    { label: 'Leads Boncos Closing Rendah', prompt: 'Kenapa leads iklan properti banyak tapi closing tetap rendah? Target: Developer & Sales Manager.' },
-    { label: '3 Kesalahan Follow-Up', prompt: '3 kesalahan follow-up yang membuat calon pembeli properti hilang tanpa kabar.' },
-    { label: 'Beli Tanah Girik vs SHM', prompt: 'Edukasi bahaya membeli tanah tanpa sertifikat SHM untuk investor pemula di Bandung.' },
-    { label: 'Cash Flow vs Capital Gain', prompt: 'Investasi properti: Lebih menguntungkan cash flow kos-kosan atau capital gain tanah kosong?' },
-    { label: 'Lokasi vs Luas Bangunan', prompt: 'Kenapa lokasi strategis lebih penting daripada luas bangunan untuk rumah pertama?' }
+    { label: 'Jelaskan layanan & harga', prompt: 'Jelaskan layanan freelance Nugi, paket harga, dan cara kerja dari awal sampai handover secara ringkas.' },
+    { label: 'Draft proposal developer', prompt: 'Bantu saya membuat draft proposal singkat untuk developer perumahan yang ingin merapikan distribusi leads tim sales-nya.' },
+    { label: 'Artikel SEO distribusi leads', prompt: 'Buat draft artikel SEO: Cara otomatis membagi leads iklan ke WhatsApp sales.' },
+    { label: 'Jawab keberatan harga', prompt: 'Klien bilang investasinya Rp5 juta kemahalan. Tolong bantu saya menjawab dengan tenang dan persuasif.' },
+    { label: 'Konten IG 1 postingan', prompt: 'Buatkan konten tentang kenapa leads iklan properti hangus karena respon lambat.' }
   ];
 
   // Auto scroll to bottom when messages update
@@ -345,10 +346,10 @@ export default function AIContentStudio({ currentProject }) {
             <span style={{ fontSize: '0.8rem', fontWeight: 700, color: '#e9d5ff' }}>NUGIPROPERTI AI COPILOT</span>
           </div>
           <h2 style={{ fontSize: '1.45rem', fontWeight: 800, color: '#f8fafc', marginBottom: '8px' }}>
-            AI Content Strategist & Design Copilot
+            AI Freelance Assistant & Content Studio
           </h2>
           <p style={{ fontSize: '0.88rem', color: 'var(--text-muted)', maxWidth: '600px', margin: '0 auto' }}>
-            Ajak diskusi atau ketik ide konten properti secara bebas. AI Agent akan membalas obrolan Anda dan otomatis merender poster 1080x1350 presisi safezone Instagram.
+            Ajak diskusi seputar bisnis & pekerjaan freelance (layanan, proposal, copy, artikel, konten) atau ketik ide konten secara bebas. Asisten akan membalas dan otomatis merender poster 1080×1350 presisi safezone Instagram bila diminta.
           </p>
         </div>
 
@@ -371,8 +372,8 @@ export default function AIContentStudio({ currentProject }) {
                   {/* Agent Header / Status */}
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '10px' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                      <span style={{ fontWeight: 700, color: '#c084fc', fontSize: '0.88rem' }}>Nugi Agent</span>
-                      <span className="badge badge-purple" style={{ fontSize: '0.68rem' }}>Marketing Copilot</span>
+                      <span style={{ fontWeight: 700, color: '#c084fc', fontSize: '0.88rem' }}>Asisten Nugi</span>
+                      <span className="badge badge-purple" style={{ fontSize: '0.68rem' }}>Asisten Nugi</span>
                     </div>
                     <span style={{ fontSize: '0.72rem', color: 'var(--text-dim)' }}>{msg.timestamp}</span>
                   </div>

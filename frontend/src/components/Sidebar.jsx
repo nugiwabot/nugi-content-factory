@@ -3,7 +3,7 @@ import { LayoutGrid, FileText, Image as ImageIcon, Palette, Clock, Layers, Spark
 
 export default function Sidebar({ activeTab, setActiveTab }) {
   const menuItems = [
-    { id: 'ai_studio', label: 'AI Agent Copilot', icon: Sparkles, badge: 'Agent' },
+    { id: 'ai_studio', label: 'Asisten Nugi', icon: Sparkles, badge: 'Chat' },
     { id: 'design_studio', label: 'Design Engine (1080x1350)', icon: Layers },
     { id: 'studio', label: 'Content Gallery', icon: ImageIcon },
     { id: 'briefs', label: 'AI Brief Creator', icon: FileText },

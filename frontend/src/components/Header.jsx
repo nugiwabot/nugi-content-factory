@@ -11,9 +11,9 @@ export default function Header({ projects, currentProject, setCurrentProject, on
             alt="NUGIPROPERTI Logo" 
             style={{ height: '28px', width: 'auto', objectFit: 'contain' }} 
           />
-          <span style={{ color: 'var(--text-dim)', fontSize: '0.85rem', fontWeight: 600 }}>| Content Factory</span>
+          <span style={{ color: 'var(--text-dim)', fontSize: '0.85rem', fontWeight: 600 }}>| Nugi Assistant</span>
         </div>
-        <span className="brand-badge">Property Edition v0.1</span>
+        <span className="brand-badge">Freelance Edition v0.2</span>
       </div>
 
       <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
